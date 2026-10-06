@@ -1,0 +1,75 @@
+{
+  "expo": {
+    "name": "Fylio",
+    "slug": "fylio",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/logo/logo_f.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.fylio.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Fylio utilise la caméra pour scanner les QR codes de connexion.",
+        "NSPhotoLibraryUsageDescription": "Fylio affiche vos photos et vidéos pour les transférer.",
+        "NSLocalNetworkUsageDescription": "Fylio découvre les appareils du réseau local pour transférer des fichiers.",
+        "NSBonjourServices": [
+          "_fylio._tcp"
+        ],
+        "NSMicrophoneUsageDescription": "Nécessaire pour l’enregistrement vidéo.",
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/logo/logo_f.png",
+        "backgroundColor": "#0B2A6B"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "app.fylio.mobile",
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "READ_MEDIA_AUDIO",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
+        "CHANGE_WIFI_MULTICAST_STATE",
+        "INTERNET",
+        "NEARBY_WIFI_DEVICES"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-localization",
+      "expo-image",
+      "expo-audio",
+      "expo-video",
+      "expo-splash-screen",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Fylio utilise la caméra pour scanner les QR codes."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Fylio affiche vos photos et vidéos.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ]
+    ],
+    "scheme": "fylio",
+    "splash": {
+      "image": "./assets/images/logo/fylio_logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B2A6B"
+    }
+  }
+}
