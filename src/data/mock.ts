@@ -3,10 +3,10 @@ export type DeviceKind = 'pc' | 'android' | 'iphone';
 export type Link = 'wifi' | 'hotspot' | 'cable';
 export type Device = { id: string; name: string; kind: DeviceKind; link: Link; online: boolean; ip?: string };
 export type FileKind = 'photo' | 'video' | 'music' | 'doc' | 'pdf' | 'other';
-export type FileItem = { id: string; name: string; kind: FileKind; size: number; date: number; thumb?: any; duration?: number };
+export type FileItem = { id: string; name: string; kind: FileKind; size: number; date: number; thumb?: any; duration?: number; uri?: string; w?: number; h?: number };
 export type HistoryItem = { id: string; name: string; kind: FileKind; size: number; at: number; dir: 'sent' | 'received'; peer: string; status: 'done' | 'failed' };
 export type Notif = { id: string; type: 'request' | 'done' | 'failed'; title: string; sub: string; read: boolean; at: number };
-export type Song = { id: string; title: string; artist: string; duration: number; fav?: boolean };
+export type Song = { id: string; title: string; artist: string; duration: number; fav?: boolean; uri?: string; name?: string };
 
 export const DEMO_DEVICES: Device[] = [
   { id: 'd1', name: 'iPhone 14', kind: 'iphone', link: 'wifi', online: true, ip: '172.20.10.3' },
@@ -39,4 +39,13 @@ export const DEMO_SONGS: Song[] = [
 ];
 export const fmtSize = (b: number) => b >= 1e9 ? (b / 1e9).toFixed(1) + ' Go' : b >= 1e6 ? Math.round(b / 1e6) + ' Mo' : Math.round(b / 1e3) + ' Ko';
 export const fmtDur = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+/** Sous-titre d'une liste de fichiers : taille si connue, sinon dimensions, + durée le cas échéant. */
+export const fmtFileSub = (f?: FileItem) => {
+  if (!f) return '';
+  const bits: string[] = [];
+  if (f.size > 0) bits.push(fmtSize(f.size));
+  else if (f.w && f.h) bits.push(`${f.w}×${f.h}`);
+  if (f.duration) bits.push(fmtDur(f.duration));
+  return bits.join(' • ');
+};
 export const genKey = () => Array.from({ length: 8 }, () => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 31)]).join('');

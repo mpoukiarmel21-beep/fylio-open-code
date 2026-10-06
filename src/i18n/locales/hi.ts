@@ -26,10 +26,11 @@ export default {
   history: { title: 'इतिहास', empty: 'अभी कोई ट्रांसफर नहीं', emptySub: 'आपकी ट्रांसफर की गई फ़ाइलें यहाँ दिखेंगी।', popo: 'कोई फ़ाइल भेजना चाहते हैं?', received: '{{name}} से प्राप्त', sent: '{{name}} को भेजा', devicesTitle: 'डिवाइस', devicesEmpty: 'कोई हाल का डिवाइस नहीं', devicesEmptySub: 'शुरू करने के लिए डिवाइस कनेक्ट करें।' },
   files: { title: 'फ़ाइलें', subtitle: 'अपनी सभी फ़ाइलों तक पहुँचें।', search: 'फ़ाइल खोजें…', images: 'चित्र', videos: 'वीडियो', docs: 'दस्तावेज़', musicF: 'संगीत', downloads: 'डाउनलोड', received: 'प्राप्त', items: '{{count}} आइटम', select: 'चुनें' },
   gallery: { title: 'गैलरी', search: 'फ़ोटो खोजें…', all: 'सब', photos: 'फ़ोटो', videos: 'वीडियो', today: 'आज', week: 'इस सप्ताह' },
-  music: { title: 'संगीत', search: 'गाना खोजें…', recent: 'हाल का संगीत', all: 'सारा संगीत', nowPlaying: 'चल रहा है', favorites: 'पसंदीदा', lockDemo: 'लॉक स्क्रीन विजेट (पूर्वावलोकन)', lockHint: 'विजेट केवल लॉक स्क्रीन और कंट्रोल सेंटर पर दिखता है।' },
+  music: { count: '{{count}} गाने', title: 'संगीत', search: 'गाना खोजें…', recent: 'हाल का संगीत', all: 'सारा संगीत', nowPlaying: 'चल रहा है', favorites: 'पसंदीदा', lockDemo: 'लॉक स्क्रीन विजेट (पूर्वावलोकन)', lockHint: 'विजेट केवल लॉक स्क्रीन और कंट्रोल सेंटर पर दिखता है।' },
   video: { title: 'वीडियो प्लेयर', pip: 'पिक्चर इन पिक्चर' },
   pdf: { title: 'PDF रीडर', page: 'पृष्ठ {{n}} / {{total}}' },
   browser: { title: 'ब्राउज़र', placeholder: 'खोजें या पता लिखें', tabs: 'टैब', bookmarks: 'बुकमार्क', downloads: 'डाउनलोड', newTab: 'नया टैब' },
   notifs: { title: 'सूचनाएँ', empty: 'कोई सूचना नहीं', emptySub: 'ट्रांसफर अनुरोध और अलर्ट यहाँ आएँगे।', done: 'ट्रांसफर पूरा', failed: 'ट्रांसफर बाधित', request: 'ट्रांसफर अनुरोध' },
   settings: { title: 'सेटिंग्स', profile: 'प्रोफ़ाइल', language: 'भाषा', character: 'पात्र', name: 'नाम', security: 'सुरक्षा', trusted: 'विश्वसनीय डिवाइस', replay: 'गाइडेड टूर फिर देखें', replayGuides: '« दूर से » गाइड फिर देखें', about: 'बारे में', version: 'संस्करण', simulateCable: 'केबल कनेक्शन सिमुलेट करें', demoData: 'डेमो डेटा लोड करें', reset: 'ऐप रीसेट', autoAccept: 'विश्वसनीय डिवाइस स्वतः स्वीकार' },
+  lib: { grant: 'Fylio को अपनी फ़ाइलों तक पहुँच दें', grantSub: 'अनुमति के बाद फ़ोटो, वीडियो और संगीत दिखेंगे।', grantBtn: 'अनुमति दें', import: 'फ़ाइल आयात करें', imported: '{{count}} फ़ाइलें आयात हुईं', empty: 'यहाँ अभी कुछ नहीं है', older: 'पुराने', loading: 'लोड हो रहा है…', pdfErr: 'यह फ़ाइल नहीं खुल सकी।', mediaErr: 'यह फ़ाइल नहीं चल सकी।' },
 };

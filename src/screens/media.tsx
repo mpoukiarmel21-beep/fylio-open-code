@@ -6,14 +6,18 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
-import { Folder, Image as ImgIco, Video, Music, FileText, Download, Inbox, Play, Pause, SkipBack, SkipForward, Heart, Share2, Trash2, Info, X, ChevronLeft, ChevronRight, Globe, Lock, RotateCw, Plus, Bookmark, Volume2, Repeat, Shuffle, Send } from 'lucide-react-native';
+import Pdf from 'react-native-pdf';
+import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { Folder, Image as ImgIco, Video, Music, FileText, Download, Inbox, Play, Pause, SkipBack, SkipForward, Heart, Share2, Trash2, Info, X, ChevronLeft, ChevronRight, Globe, Lock, RotateCw, Plus, Bookmark, Volume2, Repeat, Shuffle, Send, ShieldCheck, FolderPlus } from 'lucide-react-native';
 import { Screen, Header, HeaderBack, GlassCard, GlassButton, GhostButton, Press, Search, Chip, T, SectionTitle, FadeIn, W, H, Row, IconButton } from '../ui';
 import { NAV_H } from '../ui/GlassNav';
 import { C, F, R, S } from '../theme';
 import { IMG } from '../assets';
 import { useApp } from '../store/AppStore';
-import { DEMO_FILES, DEMO_DOCS, DEMO_SONGS, FileItem, Song, fmtSize, fmtDur } from '../data/mock';
-import { FileThumb } from './send';
+import { FileItem, Song, fmtSize, fmtDur, fmtFileSub } from '../data/mock';
+import { useLibrary, resolveMediaUri } from '../data/library';
+import { FileThumb, PhImage } from './send';
 import type { RootParams } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootParams>;
@@ -25,12 +29,18 @@ const useHeaderProps = () => {
 /* 16 — Fichiers : recherche, 6 dossiers (2 colonnes), personnage dossiers */
 export function FilesScreen() {
   const nav = useNavigation<Nav>(); const { t } = useTranslation(); const hp = useHeaderProps();
+  const lib = useLibrary();
   const [q, setQ] = useState('');
+  const [importing, setImporting] = useState(false);
+  useEffect(() => { lib.ensure(); }, []);
   const folders = [
-    { k: 'images', i: ImgIco, c: '#5BB8FF', n: DEMO_FILES.filter((f) => f.kind === 'photo').length }, { k: 'videos', i: Video, c: '#8E8CFF', n: DEMO_FILES.filter((f) => f.kind === 'video').length },
-    { k: 'docs', i: FileText, c: '#FFB357', n: DEMO_DOCS.length }, { k: 'music', i: Music, c: '#FF7AA2', n: DEMO_SONGS.length },
-    { k: 'downloads', i: Download, c: '#38D39F', n: 3 }, { k: 'received', i: Inbox, c: '#2E90FA', n: 5 },
+    { k: 'images', i: ImgIco, c: '#5BB8FF', n: lib.counts.images }, { k: 'videos', i: Video, c: '#8E8CFF', n: lib.counts.videos },
+    { k: 'docs', i: FileText, c: '#FFB357', n: lib.counts.docs }, { k: 'music', i: Music, c: '#FF7AA2', n: lib.counts.music },
+    { k: 'downloads', i: Download, c: '#38D39F', n: lib.counts.downloads }, { k: 'received', i: Inbox, c: '#2E90FA', n: lib.counts.received },
   ] as const;
+  const granted = lib.perm === 'granted';
+  const total = folders.reduce((a, f) => a + f.n, 0);
+  const doImport = async () => { setImporting(true); try { await lib.importDocs(); } finally { setImporting(false); } };
   return (
     <Screen bg={4}>
       <Header {...hp} />
@@ -40,6 +50,29 @@ export function FilesScreen() {
           <Image source={IMG.filesMascot} style={{ width: 110, height: 110 }} resizeMode="contain" />
         </FadeIn>
         <Search placeholder={t('files.search')} value={q} onChange={setQ} style={{ marginTop: 6 }} />
+        {!granted && (
+          <GlassCard style={{ marginTop: 12 }}>
+            <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+              <ShieldCheck size={34} color={C.accent} />
+              <Text style={[T.cardT(), { marginTop: 8, textAlign: 'center' }]}>{t('lib.grant')}</Text>
+              <Text style={[T.body(), { textAlign: 'center', marginTop: 2 }]}>{t('lib.grantSub')}</Text>
+              <View style={{ marginTop: 12 }}><GlassButton label={t('lib.grantBtn')} onPress={() => lib.ask()} /></View>
+            </View>
+          </GlassCard>
+        )}
+        {granted && (
+          <FadeIn delay={40} style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+            <GhostButton icon={FolderPlus} label={importing ? t('lib.loading') : t('lib.import')} onPress={doImport} style={{ flex: 1 }} />
+          </FadeIn>
+        )}
+        {granted && total === 0 && (
+          <GlassCard style={{ marginTop: 12 }}>
+            <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+              <Text style={[T.cardT(), { textAlign: 'center' }]}>{t('lib.empty')}</Text>
+              <View style={{ marginTop: 12 }}><GlassButton label={t('lib.import')} onPress={doImport} /></View>
+            </View>
+          </GlassCard>
+        )}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
           {folders.map((f, i) => (
             <FadeIn key={f.k} delay={60 + i * 50} style={{ width: (W - 24 - 10) / 2 }}>
@@ -60,19 +93,25 @@ export function FilesScreen() {
 /* 17 — Dossier : liste des fichiers, tap → visionneuse / vidéo / PDF ; sélection → Envoyer */
 export function FolderScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
+  const lib = useLibrary(); const pl = usePlayer();
   const { kind, title } = route.params as { kind: string; title: string };
-  const items: FileItem[] = useMemo(() => kind === 'images' ? DEMO_FILES.filter((f) => f.kind === 'photo') : kind === 'videos' ? DEMO_FILES.filter((f) => f.kind === 'video') : kind === 'docs' ? DEMO_DOCS : kind === 'music' ? DEMO_SONGS.map((s) => ({ id: s.id, name: s.title + '.mp3', kind: 'music' as const, size: 4e6, date: Date.now(), duration: s.duration })) : DEMO_FILES.slice(0, 5), [kind]);
+  const items: FileItem[] = useMemo(() => lib.itemsFor(kind), [kind, lib.images, lib.videos, lib.music, lib.docs, lib.downloads, lib.received]);
   const [sel, setSel] = useState<Set<string>>(new Set()); const [mode, setMode] = useState(false);
-  const open = (f: FileItem, i: number) => {
+  useEffect(() => { lib.ensure(); }, []);
+  const open = (f: FileItem) => {
     if (mode) { setSel((s) => { const n = new Set(s); n.has(f.id) ? n.delete(f.id) : n.add(f.id); return n; }); return; }
     if (f.kind === 'photo') nav.navigate('Viewer', { items: items.filter((x) => x.kind === 'photo'), index: items.filter((x) => x.kind === 'photo').indexOf(f) });
-    else if (f.kind === 'video') nav.navigate('Video', { item: f }); else if (f.kind === 'pdf') nav.navigate('Pdf', { item: f }); else if (f.kind === 'music') nav.navigate('Player'); else nav.navigate('Pdf', { item: f });
+    else if (f.kind === 'video') nav.navigate('Video', { item: f });
+    else if (f.kind === 'music') { const song = lib.songs.find((s) => s.id === f.id); if (song) pl.play(song); nav.navigate('Player'); }
+    else nav.navigate('Pdf', { item: f });
   };
+  const sub = (f: FileItem) => fmtFileSub(f);
   return (
     <Screen bg={4}>
       <HeaderBack title={title} sub={t('files.items', { count: items.length })} onBack={() => nav.goBack()} right={<Press onPress={() => { setMode(!mode); setSel(new Set()); }}><Text style={{ fontFamily: F.bodyB, color: C.accent, fontSize: 13 }}>{mode ? t('common.cancel') : t('files.select')}</Text></Press>} />
       <ScrollView contentContainerStyle={{ padding: 10, paddingBottom: 110 }}>
-        <GlassCard padding={4}>{items.map((f, i) => <Row key={f.id} title={f.name} sub={`${fmtSize(f.size)}${f.duration ? ' • ' + fmtDur(f.duration) : ''}`} left={<FileThumb f={f} />} onPress={() => open(f, i)} right={mode ? <View style={[st.chk, sel.has(f.id) && { backgroundColor: C.accent, borderColor: C.accent }]} /> : undefined} />)}</GlassCard>
+        {!items.length && <Text style={[T.body(), { textAlign: 'center', paddingTop: 40 }]}>{lib.perm === 'granted' ? t('lib.empty') : t('lib.grantSub')}</Text>}
+        {!!items.length && <GlassCard padding={4}>{items.map((f) => <Row key={f.id} title={f.name} sub={sub(f)} left={<FileThumb f={f} />} onPress={() => open(f)} right={mode ? <View style={[st.chk, sel.has(f.id) && { backgroundColor: C.accent, borderColor: C.accent }]} /> : undefined} />)}</GlassCard>}
       </ScrollView>
       {mode && sel.size > 0 && <View style={{ position: 'absolute', left: 14, right: 14, bottom: 24 }}><GlassButton label={`${t('common.send')} (${sel.size})`} icon={Send} onPress={() => nav.navigate('Nearby', { files: items.filter((f) => sel.has(f.id)), mode: 'send' })} /></View>}
     </Screen>
@@ -82,10 +121,23 @@ export function FolderScreen() {
 /* 18 — Galerie : chips Tout/Photos/Vidéos, grille 3 colonnes groupée par date, personnage à droite */
 export function GalleryScreen() {
   const nav = useNavigation<Nav>(); const { t } = useTranslation(); const hp = useHeaderProps();
+  const lib = useLibrary();
   const [filter, setFilter] = useState<'all' | 'photos' | 'videos'>('all'); const [q, setQ] = useState('');
-  const items = DEMO_FILES.filter((f) => filter === 'all' || (filter === 'photos' ? f.kind === 'photo' : f.kind === 'video'));
+  useEffect(() => { lib.ensure(); }, []);
+  const items = useMemo(() => {
+    const all = filter === 'all' ? [...lib.images, ...lib.videos] : filter === 'photos' ? lib.images : lib.videos;
+    const sorted = [...all].sort((a, b) => b.date - a.date);
+    return q ? sorted.filter((f) => f.name.toLowerCase().includes(q.toLowerCase())) : sorted;
+  }, [filter, q, lib.images, lib.videos]);
   const cell = (W - 16 - 6 * 2) / 3;
-  const groups = [{ k: 'today', list: items.slice(0, 6) }, { k: 'week', list: items.slice(6) }];
+  const now = Date.now();
+  const dayMs = 864e5;
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+  const groups = [
+    { k: 'today', list: items.filter((f) => f.date >= startOfToday.getTime()) },
+    { k: 'week', list: items.filter((f) => f.date < startOfToday.getTime() && f.date >= now - 7 * dayMs) },
+    { k: 'older', list: items.filter((f) => f.date < now - 7 * dayMs) },
+  ];
   return (
     <Screen bg={4}>
       <Header {...hp} />
@@ -96,15 +148,17 @@ export function GalleryScreen() {
         </FadeIn>
         <Search placeholder={t('gallery.search')} value={q} onChange={setQ} />
         <View style={{ flexDirection: 'row', gap: 8, marginVertical: 10 }}>{(['all', 'photos', 'videos'] as const).map((k) => <Chip key={k} label={t(`gallery.${k}`)} active={filter === k} onPress={() => setFilter(k)} />)}</View>
+        {!items.length && <Text style={[T.body(), { textAlign: 'center', paddingTop: 24 }]}>{lib.perm === 'granted' ? t('lib.empty') : t('lib.grantSub')}</Text>}
         {groups.map((g) => g.list.length > 0 && (
           <View key={g.k} style={{ marginBottom: 10 }}>
-            <Text style={[T.cardT(), { marginBottom: 6, marginLeft: 2 }]}>{t(`gallery.${g.k}`)}</Text>
+            <Text style={[T.cardT(), { marginBottom: 6, marginLeft: 2 }]}>{g.k === 'older' ? t('lib.older') : t(`gallery.${g.k}`)}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
               {g.list.map((f, i) => (
                 <Press key={f.id} scale={0.95} onPress={() => f.kind === 'video' ? nav.navigate('Video', { item: f }) : nav.navigate('Viewer', { items: items.filter((x) => x.kind === 'photo'), index: items.filter((x) => x.kind === 'photo').indexOf(f) })}>
                   <View style={{ width: cell, height: cell, borderRadius: 12, overflow: 'hidden' }}>
                     <LinearGradient colors={[`hsl(${200 + (i * 17) % 50}, 85%, 70%)`, `hsl(${215 + (i * 11) % 40}, 80%, 50%)`]} style={StyleSheet.absoluteFill} />
-                    {f.kind === 'video' && <View style={st.vidBadge}><Play size={10} color="#fff" fill="#fff" /><Text style={{ color: '#fff', fontSize: 10, fontFamily: F.bodyB }}>0:{f.duration}</Text></View>}
+                    <PhImage uri={f.uri} style={StyleSheet.absoluteFill as any} contentFit="cover" />
+                    {f.kind === 'video' && !!f.duration && <View style={st.vidBadge}><Play size={10} color="#fff" fill="#fff" /><Text style={{ color: '#fff', fontSize: 10, fontFamily: F.bodyB }}>{fmtDur(f.duration)}</Text></View>}
                   </View>
                 </Press>
               ))}
@@ -125,10 +179,10 @@ export function ViewerScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       <FlatList data={items} horizontal pagingEnabled initialScrollIndex={i} getItemLayout={(_, k) => ({ length: W, offset: W * k, index: k })} keyExtractor={(f) => f.id} onMomentumScrollEnd={(e) => setI(Math.round(e.nativeEvent.contentOffset.x / W))} showsHorizontalScrollIndicator={false}
-        renderItem={({ item, index: k }) => <Press onPress={() => setUi(!ui)} scale={1}><View style={{ width: W, height: H, alignItems: 'center', justifyContent: 'center' }}><LinearGradient colors={[`hsl(${200 + (k * 17) % 50}, 85%, 70%)`, `hsl(${215 + (k * 11) % 40}, 80%, 45%)`]} style={{ width: W, height: W * 1.25, borderRadius: 4 }} /></View></Press>} />
+        renderItem={({ item, index: k }) => <Press onPress={() => setUi(!ui)} scale={1}><View style={{ width: W, height: H, alignItems: 'center', justifyContent: 'center' }}><LinearGradient colors={[`hsl(${200 + (k * 17) % 50}, 85%, 70%)`, `hsl(${215 + (k * 11) % 40}, 80%, 45%)`]} style={{ width: W, height: W * 1.25, borderRadius: 4 }} /><PhImage uri={item.uri} direct style={{ width: W, height: W * 1.25, borderRadius: 4 } as any} contentFit="contain" /></View></Press>} />
       <Animated.View style={[st.viewerTop, { opacity: op }]} pointerEvents={ui ? 'auto' : 'none'}>
         <IconButton icon={ChevronLeft} deep onPress={() => nav.goBack()} />
-        <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: '#fff', fontFamily: F.bodyB }}>{items[i]?.name}</Text><Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 12 }}>{i + 1} / {items.length} • {fmtSize(items[i]?.size ?? 0)}</Text></View>
+        <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: '#fff', fontFamily: F.bodyB }}>{items[i]?.name}</Text><Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 12 }}>{[`${i + 1} / ${items.length}`, fmtFileSub(items[i])].filter(Boolean).join(' • ')}</Text></View>
         <View style={{ width: 40 }} />
       </Animated.View>
       <Animated.View style={[st.viewerBar, { opacity: op }]} pointerEvents={ui ? 'auto' : 'none'}>
@@ -137,79 +191,163 @@ export function ViewerScreen() {
     </View>
   );
 }
-/* 20 — Lecteur vidéo (expo-video prêt ; aperçu dégradé en démo), commandes vitrées */
+/* 20 — Lecteur vidéo (expo-video réel ; commandes vitrées) */
 export function VideoScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
   const { item } = route.params as { item: FileItem };
-  const [playing, setPlaying] = useState(true); const [pos, setPos] = useState(0);
-  useEffect(() => { if (!playing) return; const iv = setInterval(() => setPos((p) => (p + 1) % (item.duration ?? 42)), 1000); return () => clearInterval(iv); }, [playing]);
-  const dur = item.duration ?? 42;
+  const player = useVideoPlayer(null, (p) => { p.loop = false; });
+  const [src, setSrc] = useState<string | null>(null);
+  const [state, setState] = useState({ pos: 0, dur: item.duration ?? 0, playing: false, err: false });
+  useEffect(() => {
+    let alive = true;
+    resolveMediaUri(item.uri).then((u) => {
+      if (!alive) return;
+      if (!u) { setState((s) => ({ ...s, err: true })); return; }
+      setSrc(u);
+      player.replaceAsync(u).catch(() => setState((s) => ({ ...s, err: true })));
+    }).catch(() => setState((s) => ({ ...s, err: true })));
+    return () => { alive = false; };
+  }, [item.uri]);
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setState((s) => {
+        const pos = player.currentTime ?? 0;
+        const dur = player.duration || s.dur;
+        if (player.status === 'error') return { ...s, err: true };
+        if (dur > 0 && pos >= dur - 0.4 && player.playing) return { ...s, pos: 0, dur, playing: false };
+        return { ...s, pos, dur, playing: player.playing };
+      });
+    }, 500);
+    return () => clearInterval(iv);
+  }, []);
+  const seek = (delta: number) => { const v = Math.max(0, Math.min(state.dur || item.duration || 0, state.pos + delta)); player.currentTime = v; setState((s) => ({ ...s, pos: v })); };
+  const dur = state.dur || item.duration || 1;
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
-      <View style={{ flex: 1, justifyContent: 'center' }}><LinearGradient colors={['#2E90FA', '#0B52DE']} style={{ width: W, height: W * 0.56 }} /></View>
+      <View style={{ flex: 1, justifyContent: 'center' }}>
+        {src && !state.err ? (
+          <VideoView player={player} style={{ width: W, height: W * 0.56 }} contentFit="contain" nativeControls={false} allowsPictureInPicture />
+        ) : (
+          <LinearGradient colors={['#2E90FA', '#0B52DE']} style={{ width: W, height: W * 0.56, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: 'rgba(255,255,255,.9)', fontFamily: F.bodyB, fontSize: 13, paddingHorizontal: 20, textAlign: 'center' }}>{state.err ? t('lib.mediaErr') : item.name}</Text>
+          </LinearGradient>
+        )}
+      </View>
       <View style={st.viewerTop}><IconButton icon={ChevronLeft} deep onPress={() => nav.goBack()} /><Text style={{ flex: 1, textAlign: 'center', color: '#fff', fontFamily: F.bodyB }}>{item.name}</Text><View style={{ width: 40 }} /></View>
       <View style={{ position: 'absolute', left: 14, right: 14, bottom: 40 }}>
         <GlassCard deep padding={14}>
-          <View style={st.track}><View style={[st.fill, { width: `${(pos / dur) * 100}%` }]} /></View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}><Text style={T.body(true)}>{fmtDur(pos)}</Text><Text style={T.body(true)}>{fmtDur(dur)}</Text></View>
+          <View style={st.track}><View style={[st.fill, { width: `${Math.min(100, (state.pos / dur) * 100)}%` }]} /></View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}><Text style={T.body(true)}>{fmtDur(state.pos)}</Text><Text style={T.body(true)}>{fmtDur(dur)}</Text></View>
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 26, marginTop: 8 }}>
-            <Press onPress={() => setPos(Math.max(0, pos - 10))}><SkipBack size={26} color="#fff" /></Press>
-            <Press onPress={() => setPlaying(!playing)}><View style={st.playBig}>{playing ? <Pause size={26} color={C.ink} fill={C.ink} /> : <Play size={26} color={C.ink} fill={C.ink} />}</View></Press>
-            <Press onPress={() => setPos(Math.min(dur, pos + 10))}><SkipForward size={26} color="#fff" /></Press>
+            <Press onPress={() => seek(-10)}><SkipBack size={26} color="#fff" /></Press>
+            <Press onPress={() => (state.playing ? player.pause() : player.play())}><View style={st.playBig}>{state.playing ? <Pause size={26} color={C.ink} fill={C.ink} /> : <Play size={26} color={C.ink} fill={C.ink} />}</View></Press>
+            <Press onPress={() => seek(10)}><SkipForward size={26} color="#fff" /></Press>
           </View>
         </GlassCard>
       </View>
     </View>
   );
 }
-/* PDF — WebView (Google Docs viewer pour une URL ; pour un fichier local : expo-file-system + pdf.js) */
+/* PDF — react-native-pdf sur le fichier réel (sandbox ou asset résolu) */
 export function PdfScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
   const { item } = route.params as { item: FileItem };
+  const [src, setSrc] = useState<string | null>(null);
+  const [err, setErr] = useState(false);
+  const [page, setPage] = useState(1); const [pages, setPages] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    resolveMediaUri(item.uri).then((u) => { if (!alive) return; if (u) setSrc(u); else setErr(true); }).catch(() => alive && setErr(true));
+    return () => { alive = false; };
+  }, [item.uri]);
   return (
     <Screen bg={4}>
-      <HeaderBack title={item.name} sub={t('pdf.title')} onBack={() => nav.goBack()} compact />
+      <HeaderBack title={item.name} sub={pages ? t('pdf.page', { n: page, total: pages }) : t('pdf.title')} onBack={() => nav.goBack()} compact />
       <View style={{ flex: 1, margin: 10, borderRadius: R.card, overflow: 'hidden', backgroundColor: '#fff' }}>
-        <WebView source={{ uri: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }} style={{ flex: 1 }} />
+        {src && !err ? (
+          <Pdf source={{ uri: src, cache: true }} style={{ flex: 1 }} fitPolicy={0}
+            onLoadComplete={(n) => setPages(n)} onPageChanged={(p, n) => { setPage(p); setPages(n); }}
+            onError={() => setErr(true)} enableAntialiasing />
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            <FileText size={40} color={C.mute} />
+            <Text style={[T.body(), { textAlign: 'center', marginTop: 10 }]}>{err ? t('lib.pdfErr') : t('lib.loading')}</Text>
+          </View>
+        )}
       </View>
     </Screen>
   );
 }
 
 /* 21 — Musique (fond foncé) : recherche, bloc Musique récente, bloc Toutes les musiques, mini-lecteur ; 22 — Lecteur plein écran ; 22b — aperçu widget lock-screen */
-export const PlayerCtx = React.createContext<{ song: Song | null; playing: boolean; pos: number; play: (s: Song) => void; toggle: () => void; next: () => void; prev: () => void } | null>(null);
+export const PlayerCtx = React.createContext<{ song: Song | null; playing: boolean; pos: number; dur: number; play: (s: Song) => void; toggle: () => void; next: () => void; prev: () => void } | null>(null);
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
-  const [song, setSong] = useState<Song | null>(null); const [playing, setPlaying] = useState(false); const [pos, setPos] = useState(0);
-  useEffect(() => { if (!playing || !song) return; const iv = setInterval(() => setPos((p) => p + 1 >= song.duration ? (next(), 0) : p + 1), 1000); return () => clearInterval(iv); }, [playing, song]);
-  const idx = song ? DEMO_SONGS.findIndex((s) => s.id === song.id) : -1;
-  const play = (s: Song) => { setSong(s); setPos(0); setPlaying(true); };
-  const next = () => play(DEMO_SONGS[(idx + 1) % DEMO_SONGS.length]); const prev = () => play(DEMO_SONGS[(idx - 1 + DEMO_SONGS.length) % DEMO_SONGS.length]);
-  return <PlayerCtx.Provider value={{ song, playing, pos, play, toggle: () => setPlaying(!playing), next, prev }}>{children}</PlayerCtx.Provider>;
+  const { songs } = useLibrary();
+  const player = useAudioPlayer(null, { updateInterval: 500 });
+  const status = useAudioPlayerStatus(player);
+  const [song, setSong] = useState<Song | null>(null);
+  const modeRef = useRef(false);
+  useEffect(() => {
+    if (modeRef.current) return;
+    modeRef.current = true;
+    setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false, interruptionMode: 'doNotMix' }).catch(() => {});
+  }, []);
+  const play = (s: Song) => {
+    setSong(s);
+    const raw = s.uri ?? s.id;
+    if (!raw) return;
+    resolveMediaUri(raw)
+      .catch(() => null)
+      .then((u) => {
+        try { player.replace(u ?? raw); player.play(); } catch { /* audio média iOS non résoluble : on garde l'état UI */ }
+        try { player.setActiveForLockScreen(true, { title: s.title, artist: s.artist || undefined }); } catch { /* lock-screen non supporté */ }
+      });
+  };
+  const idx = song ? songs.findIndex((s) => s.id === song.id) : -1;
+  const next = () => { if (!songs.length) return; play(songs[(idx + 1) % songs.length]); };
+  const prev = () => { if (!songs.length) return; play(songs[(idx - 1 + songs.length) % songs.length]); };
+  const done = status.didJustFinish;
+  useEffect(() => { if (done) next(); }, [done]);
+  const toggle = () => { if (!song) return; if (status.playing) player.pause(); else player.play(); };
+  return <PlayerCtx.Provider value={{ song, playing: !!status.playing && !!song, pos: Math.floor(status.currentTime || 0), dur: status.duration || 0, play, toggle, next, prev }}>{children}</PlayerCtx.Provider>;
 }
 export const usePlayer = () => { const v = React.useContext(PlayerCtx); if (!v) throw new Error('PlayerProvider'); return v; };
 const Cover = ({ s, size = 44 }: { s: Song; size?: number }) => <LinearGradient colors={[`hsl(${(s.id.charCodeAt(1) * 47) % 360}, 75%, 65%)`, `hsl(${(s.id.charCodeAt(1) * 47 + 40) % 360}, 80%, 45%)`]} style={{ width: size, height: size, borderRadius: size * 0.25, alignItems: 'center', justifyContent: 'center' }}><Music size={size * 0.45} color="rgba(255,255,255,.9)" /></LinearGradient>;
 
 export function MusicScreen() {
   const nav = useNavigation<Nav>(); const { t } = useTranslation(); const hp = useHeaderProps(); const pl = usePlayer();
+  const lib = useLibrary();
   const [q, setQ] = useState(''); const [widget, setWidget] = useState(false);
-  const list = DEMO_SONGS.filter((s) => s.title.toLowerCase().includes(q.toLowerCase()));
+  useEffect(() => { lib.ensure(); }, []);
+  const list = lib.songs.filter((s) => s.title.toLowerCase().includes(q.toLowerCase()));
+  const recent = list.slice(0, 4);
+  const songSub = (s: Song) => [s.artist, s.duration > 0 ? fmtDur(s.duration) : ''].filter(Boolean).join(' • ');
   return (
     <Screen bg={1}>
       <Header {...hp} deep />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: NAV_H + 110 }}>
         <FadeIn style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-          <View style={{ flex: 1 }}><Text style={T.h1(true)}>{t('music.title')}</Text><Text style={T.lead(true)}>{DEMO_SONGS.length} titres</Text></View>
+          <View style={{ flex: 1 }}><Text style={T.h1(true)}>{t('music.title')}</Text><Text style={T.lead(true)}>{t('music.count', { count: lib.songs.length })}</Text></View>
           <Image source={IMG.musicMascot} style={{ width: 115, height: 120 }} resizeMode="contain" />
         </FadeIn>
         <Search deep placeholder={t('music.search')} value={q} onChange={setQ} style={{ marginTop: 4 }} />
-        <GlassCard deep padding={10} style={{ marginTop: 12 }}>
-          <SectionTitle deep title={t('music.recent')} action={t('music.lockDemo')} onAction={() => setWidget(true)} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>{DEMO_SONGS.slice(0, 4).map((s) => <Press key={s.id} onPress={() => pl.play(s)} style={{ width: 96 }}><Cover s={s} size={96} /><Text style={[T.strong(true), { fontSize: 12, marginTop: 4 }]} numberOfLines={1}>{s.title}</Text><Text style={[T.body(true), { fontSize: 11 }]} numberOfLines={1}>{s.artist}</Text></Press>)}</ScrollView>
-        </GlassCard>
-        <GlassCard deep padding={6} style={{ marginTop: 10 }}>
-          <View style={{ paddingHorizontal: 6, paddingTop: 4 }}><SectionTitle deep title={t('music.all')} /></View>
-          {list.map((s) => <Row key={s.id} deep tight title={s.title} sub={`${s.artist} • ${fmtDur(s.duration)}`} left={<Cover s={s} />} onPress={() => pl.play(s)} right={pl.song?.id === s.id ? <Bars /> : s.fav ? <Heart size={16} color="#FF7AA2" fill="#FF7AA2" /> : <View style={{ width: 16 }} />} />)}
-        </GlassCard>
+        {!lib.songs.length && (
+          <GlassCard deep style={{ marginTop: 12 }}>
+            <Text style={[T.body(true), { textAlign: 'center', paddingVertical: 8 }]}>{lib.perm === 'granted' ? t('lib.empty') : t('lib.grantSub')}</Text>
+          </GlassCard>
+        )}
+        {!!recent.length && (
+          <GlassCard deep padding={10} style={{ marginTop: 12 }}>
+            <SectionTitle deep title={t('music.recent')} action={t('music.lockDemo')} onAction={() => setWidget(true)} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>{recent.map((s) => <Press key={s.id} onPress={() => pl.play(s)} style={{ width: 96 }}><Cover s={s} size={96} /><Text style={[T.strong(true), { fontSize: 12, marginTop: 4 }]} numberOfLines={1}>{s.title}</Text><Text style={[T.body(true), { fontSize: 11 }]} numberOfLines={1}>{s.artist}</Text></Press>)}</ScrollView>
+          </GlassCard>
+        )}
+        {!!list.length && (
+          <GlassCard deep padding={6} style={{ marginTop: 10 }}>
+            <View style={{ paddingHorizontal: 6, paddingTop: 4 }}><SectionTitle deep title={t('music.all')} /></View>
+            {list.map((s) => <Row key={s.id} deep tight title={s.title} sub={songSub(s)} left={<Cover s={s} />} onPress={() => pl.play(s)} right={pl.song?.id === s.id ? <Bars /> : s.fav ? <Heart size={16} color="#FF7AA2" fill="#FF7AA2" /> : <View style={{ width: 16 }} />} />)}
+          </GlassCard>
+        )}
       </ScrollView>
       {pl.song && <MiniPlayer onOpen={() => nav.navigate('Player')} />}
       <Modal visible={widget} transparent animationType="fade" onRequestClose={() => setWidget(false)}><LockWidgetPreview onClose={() => setWidget(false)} /></Modal>
@@ -224,6 +362,7 @@ function Bars() {
 /* Mini-lecteur au-dessus de la barre du bas */
 export function MiniPlayer({ onOpen }: { onOpen: () => void }) {
   const pl = usePlayer(); if (!pl.song) return null;
+  const dur = pl.dur || pl.song.duration || 1;
   return (
     <View style={{ position: 'absolute', left: 14, right: 14, bottom: NAV_H + 26 }}>
       <Press onPress={onOpen}>
@@ -234,7 +373,7 @@ export function MiniPlayer({ onOpen }: { onOpen: () => void }) {
             <Press onPress={pl.toggle} hit={8}>{pl.playing ? <Pause size={24} color="#fff" fill="#fff" /> : <Play size={24} color="#fff" fill="#fff" />}</Press>
             <Press onPress={pl.next} hit={8}><SkipForward size={22} color="#fff" /></Press>
           </View>
-          <View style={[st.track, { height: 3, marginTop: 8, backgroundColor: 'rgba(255,255,255,.25)' }]}><View style={[st.fill, { width: `${(pl.pos / pl.song.duration) * 100}%`, backgroundColor: '#fff' }]} /></View>
+          <View style={[st.track, { height: 3, marginTop: 8, backgroundColor: 'rgba(255,255,255,.25)' }]}><View style={[st.fill, { width: `${Math.min(100, (pl.pos / dur) * 100)}%`, backgroundColor: '#fff' }]} /></View>
         </GlassCard>
       </Press>
     </View>
@@ -243,17 +382,26 @@ export function MiniPlayer({ onOpen }: { onOpen: () => void }) {
 /* 22 — Lecteur plein écran : pochette, titre, barre de progression + minutes lisibles, commandes SOUS la barre */
 export function PlayerScreen() {
   const nav = useNavigation<Nav>(); const { t } = useTranslation(); const pl = usePlayer();
-  useEffect(() => { if (!pl.song) pl.play(DEMO_SONGS[0]); }, []);
-  const s = pl.song ?? DEMO_SONGS[0];
+  const { songs } = useLibrary();
+  useEffect(() => { if (!pl.song && songs.length) pl.play(songs[0]); }, [songs.length]);
+  const s = pl.song ?? songs[0] ?? null;
+  if (!s) return (
+    <Screen bg={1}>
+      <HeaderBack deep title={t('music.nowPlaying')} onBack={() => nav.goBack()} />
+      <Text style={[T.body(true), { textAlign: 'center', paddingTop: 40 }]}>{t('lib.empty')}</Text>
+    </Screen>
+  );
+  const dur = pl.dur || s.duration || 1;
   return (
     <Screen bg={1}>
       <HeaderBack deep title={t('music.nowPlaying')} onBack={() => nav.goBack()} />
       <View style={{ flex: 1, alignItems: 'center', padding: S.pad }}>
         <FadeIn><View style={{ shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 30, shadowOffset: { width: 0, height: 16 }, elevation: 12 }}><Cover s={s} size={W * 0.7} /></View></FadeIn>
-        <Text style={[T.h1(true), { fontSize: 24, marginTop: 24 }]}>{s.title}</Text><Text style={T.lead(true)}>{s.artist}</Text>
+        <Text style={[T.h1(true), { fontSize: 24, marginTop: 24 }]}>{s.title}</Text>
+        {!!s.artist && <Text style={T.lead(true)}>{s.artist}</Text>}
         <GlassCard deep padding={14} style={{ alignSelf: 'stretch', marginTop: 22 }}>
-          <View style={[st.track, { backgroundColor: 'rgba(255,255,255,.3)' }]}><View style={[st.fill, { width: `${(pl.pos / s.duration) * 100}%`, backgroundColor: '#fff' }]} /></View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}><Text style={[T.strong(true), { fontSize: 13 }]}>{fmtDur(pl.pos)}</Text><Text style={[T.strong(true), { fontSize: 13 }]}>-{fmtDur(s.duration - pl.pos)}</Text></View>
+          <View style={[st.track, { backgroundColor: 'rgba(255,255,255,.3)' }]}><View style={[st.fill, { width: `${Math.min(100, (pl.pos / dur) * 100)}%`, backgroundColor: '#fff' }]} /></View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}><Text style={[T.strong(true), { fontSize: 13 }]}>{fmtDur(pl.pos)}</Text><Text style={[T.strong(true), { fontSize: 13 }]}>-{fmtDur(Math.max(0, dur - pl.pos))}</Text></View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, paddingHorizontal: 6 }}>
             <Press hit={8}><Shuffle size={20} color="rgba(255,255,255,.8)" /></Press>
             <Press onPress={pl.prev} hit={8}><SkipBack size={30} color="#fff" fill="#fff" /></Press>
@@ -269,16 +417,18 @@ export function PlayerScreen() {
 }
 /* 22b — Aperçu du widget écran verrouillé / centre de contrôle (pochette, titre, progression, commandes). En production : expo-audio + métadonnées Now Playing (voir README). */
 function LockWidgetPreview({ onClose }: { onClose: () => void }) {
-  const pl = usePlayer(); const { t } = useTranslation(); const s = pl.song ?? DEMO_SONGS[0];
+  const pl = usePlayer(); const { t } = useTranslation(); const s = pl.song;
+  if (!s) return null;
+  const dur = pl.dur || s.duration || 1;
   return (
     <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,.7)', justifyContent: 'center', padding: 24 }}>
       <Press onPress={onClose} style={StyleSheet.absoluteFill} scale={1}><View /></Press>
       <Text style={{ color: '#fff', fontFamily: F.title, fontSize: 56, textAlign: 'center' }}>{new Date().toTimeString().slice(0, 5)}</Text>
       <View style={{ borderRadius: 26, overflow: 'hidden', marginTop: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,.35)' }}>
         <LinearGradient colors={['rgba(255,255,255,.28)', 'rgba(255,255,255,.14)']} style={{ padding: 14 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Cover s={s} size={56} /><View style={{ flex: 1 }}><Text style={{ color: '#fff', fontFamily: F.bodyX, fontSize: 16 }}>{s.title}</Text><Text style={{ color: 'rgba(255,255,255,.8)', fontFamily: F.body }}>{s.artist} — Fylio</Text></View></View>
-          <View style={[st.track, { height: 5, marginTop: 12, backgroundColor: 'rgba(255,255,255,.3)' }]}><View style={[st.fill, { width: `${(pl.pos / s.duration) * 100}%`, backgroundColor: '#fff' }]} /></View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ color: '#fff', fontSize: 12, fontFamily: F.bodyB }}>{fmtDur(pl.pos)}</Text><Text style={{ color: '#fff', fontSize: 12, fontFamily: F.bodyB }}>-{fmtDur(s.duration - pl.pos)}</Text></View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Cover s={s} size={56} /><View style={{ flex: 1 }}><Text style={{ color: '#fff', fontFamily: F.bodyX, fontSize: 16 }}>{s.title}</Text><Text style={{ color: 'rgba(255,255,255,.8)', fontFamily: F.body }}>{[s.artist, 'Fylio'].filter(Boolean).join(' — ')}</Text></View></View>
+          <View style={[st.track, { height: 5, marginTop: 12, backgroundColor: 'rgba(255,255,255,.3)' }]}><View style={[st.fill, { width: `${Math.min(100, (pl.pos / dur) * 100)}%`, backgroundColor: '#fff' }]} /></View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ color: '#fff', fontSize: 12, fontFamily: F.bodyB }}>{fmtDur(pl.pos)}</Text><Text style={{ color: '#fff', fontSize: 12, fontFamily: F.bodyB }}>-{fmtDur(Math.max(0, dur - pl.pos))}</Text></View>
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 36, marginTop: 10 }}>
             <Press onPress={pl.prev}><SkipBack size={28} color="#fff" fill="#fff" /></Press>
             <Press onPress={pl.toggle}>{pl.playing ? <Pause size={34} color="#fff" fill="#fff" /> : <Play size={34} color="#fff" fill="#fff" />}</Press>

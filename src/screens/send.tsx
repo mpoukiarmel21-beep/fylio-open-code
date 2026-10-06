@@ -1,7 +1,8 @@
 /** Parcours Envoyer / Recevoir : 8 Sélection, 9/9b À proximité, 10 QR (vrai), 11 Scanner, 12 Envoyer à distance (+guide), 13 Recevoir à distance (+guide), 14 Feuille appareil, 7 Câble, Demande entrante. */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, Animated, Easing, TextInput, Share, Modal } from 'react-native';
+import { View, Text, Image, ScrollView, StyleSheet, Animated, Easing, TextInput, Share, Modal, StyleProp, ImageStyle } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { Image as ExImage } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -13,33 +14,66 @@ import { Tour, TourStep } from '../ui/Tour';
 import { C, F, R, S } from '../theme';
 import { IMG } from '../assets';
 import { useApp } from '../store/AppStore';
-import { DEMO_FILES, DEMO_DOCS, DEMO_SONGS, FileItem, Device, fmtSize } from '../data/mock';
+import { DEMO_FILES, DEMO_DOCS, DEMO_SONGS, FileItem, Device, fmtSize, fmtDur, fmtFileSub } from '../data/mock';
+import { useLibrary, resolveMediaUri, thumbUri } from '../data/library';
 import { engine, encodeQr, decodeQr, QrPayload } from '../net/engine';
 import type { RootParams } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootParams>;
 const KIND_ICO: Record<string, any> = { photo: ImgIco, video: Video, music: Music, doc: FileText, pdf: FileText, other: Folder };
+const isDirectUri = (u?: string | null) => !!u && (u.startsWith('file://') || u.startsWith('content://'));
+
+/** Vignette média : tente l'asset brut (content:// ou ph://) puis retombe sur file:// local.
+ *  Si tout échoue, rend `fallback` (ou rien) pour laisser voir le fond/gradient. */
+export const PhImage = ({ uri, direct, style, contentFit = 'cover', fallback }: { uri?: string | null; direct?: boolean; style?: StyleProp<ImageStyle>; contentFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down'; fallback?: React.ReactNode }) => {
+  const [src, setSrc] = useState<string | null>(uri ?? null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setSrc(uri ?? null);
+    setFailed(false);
+  }, [uri]);
+  const onError = () => {
+    if (uri && src === uri && !isDirectUri(uri)) {
+      (direct ? resolveMediaUri(uri) : thumbUri(uri)).then((r) => (r && r !== src ? setSrc(r) : setFailed(true)));
+    } else setFailed(true);
+  };
+  if (failed || !src) return <>{fallback ?? null}</>;
+  return <ExImage source={{ uri: src }} style={style} contentFit={contentFit} transition={120} onError={onError} />;
+};
+
 export const FileThumb = ({ f, size = 44 }: { f: FileItem; size?: number }) => {
   const Ico = KIND_ICO[f.kind] ?? Folder;
   const bg = f.kind === 'photo' ? '#9fd0ff' : f.kind === 'video' ? '#b7a8ff' : f.kind === 'music' ? '#ffb8d2' : '#ffd9a0';
-  return <View style={{ width: size, height: size, borderRadius: 12, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}><Ico size={size * 0.45} color="#fff" /></View>;
+  return (
+    <View style={{ width: size, height: size, borderRadius: 12, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <Ico size={size * 0.45} color="#fff" />
+      {(f.kind === 'photo' || f.kind === 'video') && f.uri && <PhImage uri={f.uri} style={StyleSheet.absoluteFill as any} contentFit="cover" />}
+    </View>
+  );
 };
 
 /* 8 — Sélection : chips de catégorie (Récent, Documents, Photos, Vidéos, Musique), grille/liste, compteur + bouton Envoyer compact */
 export function SendSelectScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
+  const lib = useLibrary();
   const [cat, setCat] = useState<string>(route.params?.category ?? 'recent');
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [q, setQ] = useState('');
+  useEffect(() => { lib.ensure(); }, []);
   const cats = [{ k: 'recent', i: Clock }, { k: 'docs', i: FileText }, { k: 'photos', i: ImgIco }, { k: 'videos', i: Video }, { k: 'music', i: Music }];
   const items = useMemo<FileItem[]>(() => {
-    const songs: FileItem[] = DEMO_SONGS.map((s) => ({ id: s.id, name: s.title + '.mp3', kind: 'music', size: 4e6 + s.duration * 1.6e4, date: Date.now() }));
-    const all = cat === 'docs' ? DEMO_DOCS : cat === 'photos' ? DEMO_FILES.filter((f) => f.kind === 'photo') : cat === 'videos' ? DEMO_FILES.filter((f) => f.kind === 'video') : cat === 'music' ? songs : [...DEMO_FILES.slice(0, 8), ...DEMO_DOCS.slice(0, 2)];
-    return q ? all.filter((f) => f.name.toLowerCase().includes(q.toLowerCase())) : all;
-  }, [cat, q]);
+    const base =
+      cat === 'docs' ? lib.docs
+      : cat === 'photos' ? lib.images
+      : cat === 'videos' ? lib.videos
+      : cat === 'music' ? lib.music
+      : [...lib.images.slice(0, 8), ...lib.videos.slice(0, 4), ...lib.docs.slice(0, 6)].sort((a, b) => b.date - a.date);
+    return q ? base.filter((f) => f.name.toLowerCase().includes(q.toLowerCase())) : base;
+  }, [cat, q, lib.images, lib.videos, lib.docs, lib.music]);
   const toggle = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const chosen = items.filter((f) => sel.has(f.id));
   const totalSize = chosen.reduce((a, f) => a + f.size, 0);
+  const showSize = chosen.length > 0 && chosen.every((f) => f.size > 0);
   const grid = cat === 'photos' || cat === 'videos' || cat === 'recent';
   const cell = (W - 16 - 8 * 2) / 3;
   return (
@@ -55,19 +89,21 @@ export function SendSelectScreen() {
           return grid ? (
             <Press key={f.id} onPress={() => toggle(f.id)} scale={0.95}>
               <View style={{ width: cell, height: cell, borderRadius: 14, overflow: 'hidden', backgroundColor: f.kind === 'video' ? '#8ea9ff' : `hsl(${205 + (i * 13) % 40}, 80%, ${62 + (i % 3) * 6}%)`, borderWidth: on ? 2.5 : 0, borderColor: C.accent }}>
-                {f.kind === 'video' && <View style={st.vidBadge}><Video size={12} color="#fff" /><Text style={{ color: '#fff', fontSize: 10, fontFamily: F.bodyB }}>0:{f.duration}</Text></View>}
+                <PhImage uri={f.uri} style={StyleSheet.absoluteFill as any} contentFit="cover" />
+                {f.kind === 'video' && !!f.duration && <View style={st.vidBadge}><Video size={12} color="#fff" /><Text style={{ color: '#fff', fontSize: 10, fontFamily: F.bodyB }}>{fmtDur(f.duration)}</Text></View>}
                 <View style={[st.sel, on && { backgroundColor: C.accent, borderColor: C.accent }]}>{on && <Check size={12} color="#fff" strokeWidth={3} />}</View>
               </View>
             </Press>
           ) : (
             <GlassCard key={f.id} padding={0}>
-              <Row title={f.name} sub={fmtSize(f.size)} left={<FileThumb f={f} />} onPress={() => toggle(f.id)} right={<View style={[st.sel, { position: 'relative' }, on && { backgroundColor: C.accent, borderColor: C.accent }]}>{on && <Check size={12} color="#fff" strokeWidth={3} />}</View>} />
+              <Row title={f.name} sub={fmtFileSub(f)} left={<FileThumb f={f} />} onPress={() => toggle(f.id)} right={<View style={[st.sel, { position: 'relative' }, on && { backgroundColor: C.accent, borderColor: C.accent }]}>{on && <Check size={12} color="#fff" strokeWidth={3} />}</View>} />
             </GlassCard>
           );
         })}
+        {!items.length && <Text style={[T.body(), { textAlign: 'center', alignSelf: 'stretch', paddingTop: 30 }]}>{t('lib.empty')}</Text>}
       </ScrollView>
       <View style={st.footer}>
-        <GlassCard padding={10} radius={R.pill} style={{ flex: 1 }}><Text style={T.strong()} numberOfLines={1}>{chosen.length ? `${t('select.selected', { count: chosen.length })} • ${fmtSize(totalSize)}` : t('select.none')}</Text></GlassCard>
+        <GlassCard padding={10} radius={R.pill} style={{ flex: 1 }}><Text style={T.strong()} numberOfLines={1}>{chosen.length ? `${t('select.selected', { count: chosen.length })}${showSize ? ` • ${fmtSize(totalSize)}` : ''}` : t('select.none')}</Text></GlassCard>
         <GlassButton small label={t('common.send')} disabled={!chosen.length} onPress={() => nav.navigate('Nearby', { files: chosen, mode: 'send' })} />
       </View>
     </Screen>
