@@ -15,7 +15,7 @@ on:
 jobs:
   build-ipa:
     name: Expo prebuild + xcodebuild
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
     steps:
       - name: Checkout
@@ -37,12 +37,13 @@ jobs:
           key: pods-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock', 'package-lock.json') }}
           restore-keys: pods-${{ runner.os }}-
 
-      - name: Sélectionner Xcode 26 (Swift 6.2 requis par expo-modules-jsi)
+      - name: Vérifier l'outillage (Xcode 26.6 / Swift 6.3 — expo-modules-jsi, expo/expo#50067)
         run: |
-          X=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -n1)
-          if [ -z "$X" ]; then echo "Aucun Xcode 26 sur l'image"; exit 1; fi
-          echo "DEVELOPER_DIR=$X/Contents/Developer" >> "$GITHUB_ENV"
-          sudo xcode-select -s "$X/Contents/Developer"
+          X=$(ls -d /Applications/Xcode_26.6*.app 2>/dev/null | sort -V | tail -n1)
+          if [ -n "$X" ]; then
+            echo "DEVELOPER_DIR=$X/Contents/Developer" >> "$GITHUB_ENV"
+            sudo xcode-select -s "$X/Contents/Developer"
+          fi
           xcodebuild -version
           swift --version
 
