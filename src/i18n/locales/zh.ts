@@ -26,10 +26,11 @@ export default {
   history: { title: '记录', empty: '暂无传输', emptySub: '传输过的文件会显示在这里。', popo: '要发送文件吗？', received: '来自 {{name}}', sent: '发送至 {{name}}', devicesTitle: '设备', devicesEmpty: '没有最近的设备', devicesEmptySub: '连接一台设备开始。' },
   files: { title: '文件', subtitle: '访问你的所有文件。', search: '搜索文件…', images: '图片', videos: '视频', docs: '文档', musicF: '音乐', downloads: '下载', received: '已接收', items: '{{count}} 项', select: '选择' },
   gallery: { title: '相册', search: '搜索照片…', all: '全部', photos: '照片', videos: '视频', today: '今天', week: '本周' },
-  music: { title: '音乐', search: '搜索歌曲…', recent: '最近播放', all: '所有音乐', nowPlaying: '正在播放', favorites: '收藏', lockDemo: '锁屏小组件（预览）', lockHint: '小组件仅显示在锁屏和控制中心。' },
-  video: { title: '视频播放器', pip: 'Picture in picture', err: '无法播放此视频' },
+  music: { count: '{{count}} 首歌曲', title: '音乐', search: '搜索歌曲…', recent: '最近播放', all: '所有音乐', nowPlaying: '正在播放', favorites: '收藏', lockDemo: '锁屏小组件（预览）', lockHint: '小组件仅显示在锁屏和控制中心。' },
+  video: { title: '视频播放器', pip: '画中画' },
   pdf: { title: 'PDF 阅读器', page: '第 {{n}} / {{total}} 页' },
   browser: { title: '浏览器', placeholder: '搜索或输入网址', tabs: '标签页', bookmarks: '书签', downloads: '下载', newTab: '新标签页' },
   notifs: { title: '通知', empty: '没有通知', emptySub: '传输请求和提醒会到这里。', done: '传输完成', failed: '传输中断', request: '传输请求' },
   settings: { title: '设置', profile: '个人资料', language: '语言', character: '角色', name: '名字', security: '安全', trusted: '受信任的设备', replay: '重看引导', replayGuides: '重看“远程”指南', about: '关于', version: '版本', simulateCable: '模拟数据线连接', demoData: '加载演示数据', reset: '重置应用', autoAccept: '自动接受受信任的设备' },
+  lib: { grant: '允许 Fylio 访问你的文件', grantSub: '授权后显示照片、视频和音乐。', grantBtn: '允许访问', import: '导入文件', imported: '已导入 {{count}} 个文件', empty: '这里还没有内容', older: '更早', loading: '加载中…', pdfErr: '无法打开此文件。', mediaErr: '无法播放此文件。' },
 };

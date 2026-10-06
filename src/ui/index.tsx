@@ -9,7 +9,7 @@
  * - Search / Chip : barre de recherche et puces
  * - Pressable animé (scale 0.97) + haptique léger partout
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated, Easing, ViewStyle, TextStyle, TextInput, Image, Dimensions, Platform, StyleProp } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -119,6 +119,30 @@ export function IconButton({ icon: Icon, onPress, deep, size = 40, badge, active
       {badge && <View style={{ position: 'absolute', top: 2, right: 2, width: 10, height: 10, borderRadius: 5, backgroundColor: C.red, borderWidth: 2, borderColor: '#fff' }} />}
     </Press>
   );
+}
+
+/* ---------- Header qui se masque au scroll (spec : masqué en descendant, réaffiché en remontant) ---------- */
+export function useScrollHide() {
+  const [hidden, setHidden] = useState(false);
+  const a = useRef(new Animated.Value(0)).current;
+  const last = useRef(0);
+  const hiddenRef = useRef(false);
+  useEffect(() => { Animated.timing(a, { toValue: hiddenRef.current ? 1 : 0, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(); }, [hidden, a]);
+  const setH = (v: boolean) => { if (hiddenRef.current !== v) { hiddenRef.current = v; setHidden(v); } };
+  const onScroll = (e: any) => {
+    const y: number = e?.nativeEvent?.contentOffset?.y ?? 0;
+    if (y <= 10) setH(false);
+    else if (y > last.current + 8) setH(true);
+    else if (y < last.current - 8) setH(false);
+    last.current = y;
+  };
+  const wrap: any = {
+    overflow: 'hidden' as const,
+    opacity: a.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+    maxHeight: a.interpolate({ inputRange: [0, 1], outputRange: [140, 0] }),
+    transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [0, -20] }) }],
+  };
+  return { onScroll, wrap };
 }
 
 /* ---------- Header utilisateur ---------- */
