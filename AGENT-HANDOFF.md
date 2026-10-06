@@ -1,6 +1,7 @@
 # AGENT-HANDOFF — fylio-open-code
 
 ## État actuel
+- **Phase C : code + CI en vert** — run 37453434632 (2026-10-06, macos-26, 12m54s) sur le commit `1c2ac19` : natives `react-native-tcp-socket` + `react-native-zeroconf` compilées sans erreur, nouvel artefact `fylio-ipa-unsigned` disponible.
 - Projet créé : copie de `fylio_app.zip` (52 écrans, DA complète, i18n 9 langues, moteur **simulé**).
 - Repo GitHub : `mpoukiarmel21-beep/fylio-open-code` (public), branche `main`.
 - Plan validé par l'utilisateur en 4 phases : **A** repo+CI → **B** vrais fichiers & lecteurs → **C** moteur réseau réel → **D** IPA finale.
@@ -22,10 +23,10 @@
 - Flows Nearby/Transfer/Incoming encore en démo (`DEMO_FILES`) — **Phase C**.
 
 ## En cours
-- **OpenCode — Phase C (LAN) depuis le 2026-10-06 (reprise)** : code moteur + écrans terminé et vérifié (tsc + export android) ; **commit/push CI en attente de validation utilisateur**.
+- **OpenCode — Phase C (LAN) depuis le 2026-10-06 (reprise)** : **terminé** (code + tsc + export android + push `1c2ac19` + CI verte 37453434632). Reste : validation device + relais Supabase (bloqué sur clés utilisateur).
 
 ## Prochaine étape
-- **Push Phase C** → watcher CI macos-26 (prebuild des natives tcp-socket/zeroconf = validation compile pods/gradle) → tester sur appareil (Sideloadly) : découverte mDNS entre 2 bornes, envoi/réception de vrais fichiers.
+- **Tester Phase C sur appareil** : télécharger le nouvel artefact `fylio-ipa-unsigned` de la run https://github.com/mpoukiarmel21-beep/fylio-open-code/actions/runs/37453434632 → Sideloadly sur iPhone ; valider découverte mDNS + envoi/réception réels entre 2 bornes.
 - **Phase D (partiellement faite)** : artefact `fylio-ipa-unsigned` (44 Mo, expire 2026-11-05) disponible sur la run https://github.com/mpoukiarmel21-beep/fylio-open-code/actions/runs/37441877557 → le télécharger et l'installer via Sideloadly (Apple ID, resign 7 j) pour valider Phase B sur iPhone.
 - **Relais Supabase** (clé 8 car., distance) : en attente URL + anon key de l'utilisateur.
 
@@ -38,6 +39,7 @@
 - `react-native-track-player` V5 = licence commerciale ; utiliser impérativement **@4.1.2 (Apache-2.0)** si adoption un jour.
 
 ## Journal
+- **2026-10-06 (fin de session) — OpenCode** : **Phase C poussée + CI verte** — commit `1c2ac19` (moteur LAN + écrans + ACCESS_LOCAL_NETWORK + dep buffer) → run 37453434632 succès en 12m54s : natives tcp-socket/zeroconf compilées, artefact IPA régénéré.
 - **2026-10-06 (fin de session) — OpenCode** : **Phase C code terminée** — `src/net/engine.ts` réécrit (LanEngine : serveur TCP 47811 + mDNS `_fylio._tcp` + protocole JSON→flux binaire + vrais fichiers via `FileHandle`, repli `simulate()` pour les démos), contrat `FylioEngine` étendu, `transfer.tsx`/`send.tsx` câblés (receive réel, accept/refuse entrant, try/catch connexion, `lastP` fix), `ACCESS_LOCAL_NETWORK` ajoutée. Vérifs : `npx tsc --noEmit` OK, `expo export --platform android` OK (5.7 MB, 3305 modules).
 - **2026-10-06 (fin de session) — OpenCode** : **CI en vert** — run 37441877557 (macos-26 / Xcode 26.6 / Swift 6.3) → artefact `fylio-ipa-unsigned` (44 Mo, expire 2026-11-05). Fixes successifs : (1) Xcode 26.3 sur macos-15 → erreur `SWIFT_RETURNS_RETAINED` sur les constructeurs de `RuntimeScheduler.h` (bug upstream expo-modules-jsi 57.1.x, Swift 6.2.x, expo/expo#50067) ; (2) bascule `runs-on: macos-26` (Swift 6.3.3 = warning au lieu d'erreur) → build complet (prebuild, pod install, archive, .ipa).
 - **2026-10-06 (soir) — OpenCode** : **Phase B terminée** — `library.tsx` (indexation réelle + import sandbox), `LibraryProvider` monté dans App, `mock.ts` enrichi (`fmtFileSub`), `send.tsx` (PhImage/FileThumb/SendSelect réels), `media.tsx` entièrement rebranché (Fichiers/Dossier/Galerie/Visionneuse/Vidéo expo-video/PDF react-native-pdf/Musique expo-audio avec lock-screen), i18n `lib`+`music.count` ×9 locales. Vérifs : `npx tsc --noEmit` OK, `expo export --platform android` OK (5.6 MB), `expo export --platform ios` OK. Commit/push de la session.
