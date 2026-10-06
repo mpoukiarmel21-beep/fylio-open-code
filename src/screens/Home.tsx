@@ -159,10 +159,10 @@ export function HomeScreen() {
 export { fmtDur };
 const st = StyleSheet.create({
   hdr: { position: 'absolute', left: 0, right: 0, zIndex: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(8,124,255,.16)' },
-  cta: { borderRadius: R.cardLg, padding: 10, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cta: { borderRadius: R.cardLg, padding: 12, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   ctaBlue: { backgroundColor: '#1680FF', borderColor: C.glassBlueBorder, shadowColor: C.glow, shadowOpacity: 0.45, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
-  ctaIco: { width: 26, height: 26, flexShrink: 0 },
-  ctaT: { fontFamily: F.title, fontSize: 15, color: C.ink },
-  ctaS: { fontFamily: F.body, fontSize: 11, color: C.mute },
+  ctaIco: { width: 30, height: 30, flexShrink: 0 },
+  ctaT: { fontFamily: F.title, fontSize: 18, color: C.ink },
+  ctaS: { fontFamily: F.body, fontSize: 12, color: C.mute },
   hIco: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
 });
