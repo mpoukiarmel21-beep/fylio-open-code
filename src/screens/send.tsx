@@ -206,9 +206,14 @@ export function QrScanScreen() {
   useEffect(() => { if (!perm?.granted) ask(); }, []);
   const go = async (p: QrPayload) => {
     if (busy) return; setBusy(true);
-    const dev = await engine.connect(p);
-    nav.replace('Connected', { payload: p, files: route.params?.files });
-    void dev;
+    try {
+      const dev = await engine.connect(p);
+      nav.replace('Connected', { payload: p, files: route.params?.files });
+      void dev;
+    } catch (e) {
+      console.warn('[fylio] connexion :', e instanceof Error ? e.message : String(e));
+      setBusy(false);
+    }
   };
   return (
     <Screen bg={1}>
@@ -242,7 +247,7 @@ export function ConnectedScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
   const app = useApp();
   const { payload, files } = route.params as { payload: QrPayload; files?: FileItem[] };
-  const dev: Device = { id: 'qr-' + payload.token, name: payload.name, kind: 'android', link: 'wifi', online: true, ip: payload.ip };
+  const dev: Device = { id: 'qr-' + payload.token, name: payload.name, kind: payload.kind ?? 'android', link: 'wifi', online: true, ip: payload.ip };
   useEffect(() => { app.addDevice(dev); }, []);
   return (
     <Screen bg={2}>
@@ -403,8 +408,13 @@ export function IncomingScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
   const { from, files } = route.params as { from: Device; files: FileItem[] };
   const size = files.reduce((a, f) => a + f.size, 0);
+  const refuse = () => { engine.refuseIncoming(); nav.goBack(); };
+  const accept = () => {
+    if (engine.acceptIncoming()) nav.replace('Transfer', { peer: from, files, dir: 'received' });
+    else nav.goBack();
+  };
   return (
-    <Sheet onClose={() => nav.goBack()}>
+    <Sheet onClose={refuse}>
       <View style={{ alignItems: 'center' }}>
         <Image source={IMG.dev[from.kind]} style={{ width: 80, height: 80 }} resizeMode="contain" />
         <Text style={[T.h1(), { fontSize: 20, textAlign: 'center' }]}>{t('incoming.wants', { name: from.name })}</Text>
@@ -412,8 +422,8 @@ export function IncomingScreen() {
       </View>
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 14, justifyContent: 'center' }}>{files.slice(0, 4).map((f) => <FileThumb key={f.id} f={f} size={52} />)}</View>
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
-        <View style={{ flex: 1 }}><GhostButton label={t('common.refuse')} icon={X} onPress={() => nav.goBack()} /></View>
-        <View style={{ flex: 1 }}><GlassButton label={t('common.accept')} icon={Check} onPress={() => nav.replace('Transfer', { peer: from, files, dir: 'received' })} /></View>
+        <View style={{ flex: 1 }}><GhostButton label={t('common.refuse')} icon={X} onPress={refuse} /></View>
+        <View style={{ flex: 1 }}><GlassButton label={t('common.accept')} icon={Check} onPress={accept} /></View>
       </View>
     </Sheet>
   );

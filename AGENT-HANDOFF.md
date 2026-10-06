@@ -13,14 +13,21 @@
   - `src/screens/send.tsx` : `PhImage` (asset brut d'abord → `onError` → resolve direct/grille → placeholder), `FileThumb` réel (photo/vidéo), `SendSelectScreen` branché sur lib (grille PhImage, footer count + taille conditionnelle `size>0`).
   - `src/screens/media.tsx` : FilesScreen (carte permission `lib.grant`/`grantBtn`, bouton import, comptes réels, `lib.empty`), FolderScreen (`itemsFor`, tap music → `pl.play` + Player), GalleryScreen (groupes today/week/older + recherche, PhImage), ViewerScreen (PhImage direct contain, sub `fmtFileSub`), VideoScreen (**expo-video réel** : `replaceAsync` après `resolveMediaUri`, polling 500 ms `currentTime/duration/playing`, err → `lib.mediaErr`), PdfScreen (**react-native-pdf** réel, onError → `lib.pdfErr`), PlayerProvider (**expo-audio réel** : `useAudioPlayer(null,{updateInterval:500})`, `setAudioModeAsync({playsInSilentMode,doNotMix})`, `replace` + `setActiveForLockScreen`, ctx + `dur`, `didJustFinish` → next), Music/Player/Mini/LockWidget branchés (`music.count`, artiste conditionnel, divisions protégées `pl.dur || duration || 1`).
   - i18n : bloc `lib` (grant/grantSub/grantBtn/import/imported/empty/older/loading/pdfErr/mediaErr) + `music.count` ajoutés dans les **9 locales** (ancre unique `};` vérifiée par fichier).
+- **Phase C — code complet, `npx tsc --noEmit` OK, `expo export --platform android` OK (5.7 MB)** (2026-10-06, OpenCode) :
+  - `buffer` ajoutée au package.json ; **`src/net/engine.ts` réécrit intégralement** : contrat `FylioEngine` étendu (`receive`, `acceptIncoming(): boolean`, `refuseIncoming`), `MockEngine` (démos conservées + `simulate()` partagé), **`LanEngine` réel** — serveur TCP `FYLIO_PORT=47811` (lazy, `start()` depuis `localInfo/discover/onIncoming`), mDNS `_fylio._tcp` (publish + scan + `checkLocalNetworkAccess`, self-filter txt.id), protocole v1 : lignes JSON `hello/ack` + `send(manifeste)` → `accept {ok}` puis **flux d'octets bruts** cadré par le manifeste (backpressure : lecture `FileHandle.readBytes` synchrone par data event, émission `write()` par chunk avec cb + timeout 30 s), fichiers reçus dans `Received/` (nom unique, échec → suppression du partiel), `isReal(peer)` → réel sinon repli `simulate()` (démos intactes).
+  - `transfer.tsx` : `dir==='received'` → `engine.receive(files,…)`, ref `lastP` (fix `p` stale sur échec), `lib.refresh()` après reçu réussi, cancel ne casse plus si terminé.
+  - `send.tsx` : IncomingScreen accept/refuse/onClose → `engine.acceptIncoming()/refuseIncoming()` (fallback goBack si échec), QrScan `go()` try/catch (busy relâché), ConnectedScreen `payload.kind ?? 'android'`.
+  - `app.json` : permission Android `ACCESS_LOCAL_NETWORK` ajoutée.
+  - Relais clé 8 car. (distance) = toujours mock, en attente URL + anon key Supabase fournis par l'utilisateur.
 - Flows Nearby/Transfer/Incoming encore en démo (`DEMO_FILES`) — **Phase C**.
 
 ## En cours
-- Aucun agent en cours (OpenCode — session Phase B + CI terminées ; commit de ce journal en cours).
+- **OpenCode — Phase C (LAN) depuis le 2026-10-06 (reprise)** : code moteur + écrans terminé et vérifié (tsc + export android) ; **commit/push CI en attente de validation utilisateur**.
 
 ## Prochaine étape
+- **Push Phase C** → watcher CI macos-26 (prebuild des natives tcp-socket/zeroconf = validation compile pods/gradle) → tester sur appareil (Sideloadly) : découverte mDNS entre 2 bornes, envoi/réception de vrais fichiers.
 - **Phase D (partiellement faite)** : artefact `fylio-ipa-unsigned` (44 Mo, expire 2026-11-05) disponible sur la run https://github.com/mpoukiarmel21-beep/fylio-open-code/actions/runs/37441877557 → le télécharger et l'installer via Sideloadly (Apple ID, resign 7 j) pour valider Phase B sur iPhone.
-- **Phase C** : moteur réseau réel — `react-native-zeroconf` (mDNS `_fylio._tcp`) + `react-native-tcp-socket` (port 47811) dans `src/net/engine.ts` derrière le contrat `FylioEngine` existant, relais clé distant Supabase, puis brancher Nearby/Transfer/Incoming sur les vrais fichiers de `useLibrary()`.
+- **Relais Supabase** (clé 8 car., distance) : en attente URL + anon key de l'utilisateur.
 
 ## Blocages / risques
 - Aucun Mac local : tout le build iOS passe par GitHub Actions → IPA non signée → Sideloadly (Apple ID gratuit, resign 7 jours).
@@ -31,6 +38,7 @@
 - `react-native-track-player` V5 = licence commerciale ; utiliser impérativement **@4.1.2 (Apache-2.0)** si adoption un jour.
 
 ## Journal
+- **2026-10-06 (fin de session) — OpenCode** : **Phase C code terminée** — `src/net/engine.ts` réécrit (LanEngine : serveur TCP 47811 + mDNS `_fylio._tcp` + protocole JSON→flux binaire + vrais fichiers via `FileHandle`, repli `simulate()` pour les démos), contrat `FylioEngine` étendu, `transfer.tsx`/`send.tsx` câblés (receive réel, accept/refuse entrant, try/catch connexion, `lastP` fix), `ACCESS_LOCAL_NETWORK` ajoutée. Vérifs : `npx tsc --noEmit` OK, `expo export --platform android` OK (5.7 MB, 3305 modules).
 - **2026-10-06 (fin de session) — OpenCode** : **CI en vert** — run 37441877557 (macos-26 / Xcode 26.6 / Swift 6.3) → artefact `fylio-ipa-unsigned` (44 Mo, expire 2026-11-05). Fixes successifs : (1) Xcode 26.3 sur macos-15 → erreur `SWIFT_RETURNS_RETAINED` sur les constructeurs de `RuntimeScheduler.h` (bug upstream expo-modules-jsi 57.1.x, Swift 6.2.x, expo/expo#50067) ; (2) bascule `runs-on: macos-26` (Swift 6.3.3 = warning au lieu d'erreur) → build complet (prebuild, pod install, archive, .ipa).
 - **2026-10-06 (soir) — OpenCode** : **Phase B terminée** — `library.tsx` (indexation réelle + import sandbox), `LibraryProvider` monté dans App, `mock.ts` enrichi (`fmtFileSub`), `send.tsx` (PhImage/FileThumb/SendSelect réels), `media.tsx` entièrement rebranché (Fichiers/Dossier/Galerie/Visionneuse/Vidéo expo-video/PDF react-native-pdf/Musique expo-audio avec lock-screen), i18n `lib`+`music.count` ×9 locales. Vérifs : `npx tsc --noEmit` OK, `expo export --platform android` OK (5.6 MB), `expo export --platform ios` OK. Commit/push de la session.
 - **2026-10-06 — OpenCode** : analyse du zip de référence (`fylio_app.zip`), recherche GitHub des libs (comptes/licences), plan A→D rédigé et validé, projet copié dans `D:\FYLIO open code`, git init + commit initial, repo public `fylio-open-code` créé et pushé ; CI `ios-ipa.yml` ajoutée (2 runs lancés).
