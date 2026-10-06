@@ -1,0 +1,76 @@
+name: Build iOS IPA (non signée)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'App.tsx'
+      - 'app.json'
+      - 'package.json'
+      - 'ios/**'
+      - '.github/workflows/ios-ipa.yml'
+
+jobs:
+  build-ipa:
+    name: Expo prebuild + xcodebuild
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: pods-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock', 'package-lock.json') }}
+          restore-keys: pods-${{ runner.os }}-
+
+      - name: Générer le projet iOS (expo prebuild)
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: pod install
+        working-directory: ios
+        run: pod install
+
+      - name: Archive (sans signature)
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -workspace Fylio.xcworkspace \
+            -scheme Fylio \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Fylio.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            archive
+
+      - name: Empaqueter en .ipa (Payload/)
+        run: |
+          mkdir -p "$RUNNER_TEMP/Payload"
+          APP=$(find "$RUNNER_TEMP/Fylio.xcarchive/Products" -maxdepth 2 -name '*.app' | head -n 1)
+          echo "App trouvée : $APP"
+          cp -R "$APP" "$RUNNER_TEMP/Payload/"
+          cd "$RUNNER_TEMP"
+          zip -qry Fylio.ipa Payload
+          ls -lh Fylio.ipa
+
+      - name: Publier l'IPA en artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fylio-ipa-unsigned
+          path: ${{ runner.temp }}/Fylio.ipa
+          retention-days: 30
+          if-no-files-found: error
