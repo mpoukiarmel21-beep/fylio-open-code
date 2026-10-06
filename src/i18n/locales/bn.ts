@@ -26,11 +26,10 @@ export default {
   history: { title: 'ইতিহাস', empty: 'এখনো কোনো ট্রান্সফার নেই', emptySub: 'ট্রান্সফার করা ফাইল এখানে দেখা যাবে।', popo: 'একটি ফাইল পাঠাতে চান?', received: '{{name}} থেকে গ্রহণ', sent: '{{name}}-এ পাঠানো', devicesTitle: 'ডিভাইস', devicesEmpty: 'কোনো সাম্প্রতিক ডিভাইস নেই', devicesEmptySub: 'শুরু করতে একটি ডিভাইস সংযুক্ত করুন।' },
   files: { title: 'ফাইল', subtitle: 'আপনার সব ফাইলে প্রবেশ করুন।', search: 'ফাইল খুঁজুন…', images: 'ছবি', videos: 'ভিডিও', docs: 'ডকুমেন্ট', musicF: 'মিউজিক', downloads: 'ডাউনলোড', received: 'গৃহীত', items: '{{count}} আইটেম', select: 'নির্বাচন' },
   gallery: { title: 'গ্যালারি', search: 'ছবি খুঁজুন…', all: 'সব', photos: 'ছবি', videos: 'ভিডিও', today: 'আজ', week: 'এই সপ্তাহ' },
-  music: { count: '{{count}}টিগান', title: 'মিউজিক', search: 'গান খুঁজুন…', recent: 'সাম্প্রতিক মিউজিক', all: 'সব মিউজিক', nowPlaying: 'চলছে', favorites: 'পছন্দ', lockDemo: 'লক স্ক্রিন উইজেট (প্রিভিউ)', lockHint: 'উইজেট শুধু লক স্ক্রিন ও কন্ট্রোল সেন্টারে দেখা যায়।' },
-  video: { title: 'ভিডিও প্লেয়ার', pip: 'পিকচার-ইন-পিকচার' },
+  music: { title: 'মিউজিক', search: 'গান খুঁজুন…', recent: 'সাম্প্রতিক মিউজিক', all: 'সব মিউজিক', nowPlaying: 'চলছে', favorites: 'পছন্দ', lockDemo: 'লক স্ক্রিন উইজেট (প্রিভিউ)', lockHint: 'উইজেট শুধু লক স্ক্রিন ও কন্ট্রোল সেন্টারে দেখা যায়।' },
+  video: { title: 'u09adu09bfu09a1u09bfu0993 u09aau09cdu09b2u09c7u09afu09bcu09beu09b0', pip: 'Picture in picture', err: 'u098fu0987 u09adu09bfu09a1u09bfu0993u099fu09bf u099au09beu09b2u09beu09a8u09cb u09afu09beu09acu09c7 u09a8u09be' },
   pdf: { title: 'PDF রিডার', page: 'পৃষ্ঠা {{n}} / {{total}}' },
   browser: { title: 'ব্রাউজার', placeholder: 'খুঁজুন বা ঠিকানা লিখুন', tabs: 'ট্যাব', bookmarks: 'বুকমার্ক', downloads: 'ডাউনলোড', newTab: 'নতুন ট্যাব' },
   notifs: { title: 'বিজ্ঞপ্তি', empty: 'কোনো বিজ্ঞপ্তি নেই', emptySub: 'ট্রান্সফার অনুরোধ ও সতর্কতা এখানে আসবে।', done: 'ট্রান্সফার সম্পন্ন', failed: 'ট্রান্সফার ব্যাহত', request: 'ট্রান্সফার অনুরোধ' },
   settings: { title: 'সেটিংস', profile: 'প্রোফাইল', language: 'ভাষা', character: 'চরিত্র', name: 'নাম', security: 'নিরাপত্তা', trusted: 'বিশ্বস্ত ডিভাইস', replay: 'গাইডেড টুর আবার দেখুন', replayGuides: '« দূর থেকে » গাইড আবার দেখুন', about: 'সম্পর্কে', version: 'সংস্করণ', simulateCable: 'কেবল সংযোগ সিমুলেট', demoData: 'ডেমো ডেটা লোড', reset: 'অ্যাপ রিসেট', autoAccept: 'বিশ্বস্ত ডিভাইস স্বয়ংক্রিয় গ্রহণ' },
-  lib: { grant: 'Fylio-কে আপনার ফাইলে অ্যাক্সেস দিন', grantSub: 'অনুমতির পরে ছবি, ভিডিও ও সঙ্গীত দেখানো হবে।', grantBtn: 'অনুমতি দিন', import: 'ফাইল আমদানি করুন', imported: '{{count}}টি ফাইল আমদানি হয়েছে', empty: 'এখানে এখনো কিছু নেই', older: 'আগের', loading: 'লোড হচ্ছে…', pdfErr: 'এই ফাইলটি খোলা যায়নি।', mediaErr: 'এই ফাইলটি চালানো যায়নি।' },
 };

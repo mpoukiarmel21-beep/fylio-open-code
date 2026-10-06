@@ -1,11 +1,11 @@
 /** Écran 5 — Accueil (+ états vides 5/6, visite guidée 11 étapes 5a→5k, popup Historique). */
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, Animated } from 'react-native';
+import { View, Text, Image, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Send, Download, Smartphone, Clock, Zap, Wifi, Usb } from 'lucide-react-native';
-import { Screen, Header, GlassCard, Press, T, SectionTitle, FadeIn, W, useScrollHide } from '../ui';
+import { Screen, Header, GlassCard, Press, T, SectionTitle, FadeIn, W } from '../ui';
 import { Tour, TourStep } from '../ui/Tour';
 import { NAV_H } from '../ui/GlassNav';
 import { C, F, R, S } from '../theme';
@@ -64,38 +64,33 @@ export function HomeScreen() {
     { ref: r.settings, title: t('tour.settings.0'), text: t('tour.settings.1'), radius: 24, last: t('common.letsGo') },
   ];
   const empty = app.devices.length === 0 && app.history.length === 0;
-  const hs = useScrollHide();
   return (
     <Screen bg={4}>
-      <Animated.View style={hs.wrap}>
-        <Header name={app.firstName || 'Chris'} avatar={avatar} hasNotif={hasNotif} refs={{ browser: r.browser, notifs: r.notifs, settings: r.settings }}
-          onEdit={() => nav.navigate('Who', { fromSettings: true })} onBrowser={() => nav.navigate('Browser')} onNotifs={() => nav.navigate('Notifications')} onSettings={() => nav.navigate('Settings')} />
-      </Animated.View>
-      <ScrollView contentContainerStyle={{ paddingBottom: NAV_H + 40 }} showsVerticalScrollIndicator={false} onScroll={hs.onScroll} scrollEventThrottle={16}>
+      <Header name={app.firstName || 'Chris'} avatar={avatar} hasNotif={hasNotif} refs={{ browser: r.browser, notifs: r.notifs, settings: r.settings }}
+        onEdit={() => nav.navigate('Who', { fromSettings: true })} onBrowser={() => nav.navigate('Browser')} onNotifs={() => nav.navigate('Notifications')} onSettings={() => nav.navigate('Settings')} />
+      <ScrollView contentContainerStyle={{ paddingBottom: NAV_H + 40 }} showsVerticalScrollIndicator={false}>
         <FadeIn style={{ paddingHorizontal: S.pad, marginTop: 10 }}>
           <Text style={T.h1()}>{t('home.hello', { name: app.firstName || 'Chris' })}</Text>
           <Text style={T.lead()}>{t('home.ready')}</Text>
         </FadeIn>
-        <FadeIn delay={120} style={{ flexDirection: 'row', gap: 12, paddingHorizontal: S.pad, marginTop: 8, alignItems: 'flex-end' }}>
-          <View style={{ flex: 1, gap: 10 }}>
-            <View ref={r.send} collapsable={false}>
-              <Press onPress={() => nav.navigate('SendSelect')} style={{ borderRadius: R.cardLg }}>
-                <View style={[st.cta, st.ctaBlue]}>
-                  <Image source={IMG.ico.send} style={st.ctaImg} resizeMode="contain" />
-                  <Text style={[st.ctaT, { color: '#fff' }]}>{t('common.send')}</Text><Text style={[st.ctaS, { color: 'rgba(255,255,255,.85)' }]}>{t('home.sendSub')}</Text>
-                </View>
-              </Press>
-            </View>
-            <View ref={r.recv} collapsable={false}>
-              <Press onPress={() => nav.navigate('Nearby', { files: [], mode: 'receive' })} style={{ borderRadius: R.cardLg }}>
-                <GlassCard padding={14} radius={R.cardLg}>
-                  <Image source={IMG.ico.receive} style={st.ctaImg} resizeMode="contain" />
-                  <Text style={st.ctaT}>{t('common.receive')}</Text><Text style={st.ctaS}>{t('home.receiveSub')}</Text>
-                </GlassCard>
-              </Press>
-            </View>
+        <FadeIn delay={60} style={{ alignItems: 'center', marginTop: 6 }}><Image source={IMG.mascotMain} style={{ width: W * 0.52, height: W * 0.42 }} resizeMode="contain" /></FadeIn>
+        <FadeIn delay={120} style={{ flexDirection: 'row', gap: 10, paddingHorizontal: S.pad, marginTop: 4 }}>
+          <View ref={r.send} collapsable={false} style={{ flex: 1 }}>
+            <Press onPress={() => nav.navigate('SendSelect')} style={{ borderRadius: R.cardLg }}>
+              <View style={[st.cta, st.ctaBlue]}>
+                <Image source={IMG.ico.send} style={st.ctaImg} resizeMode="contain" />
+                <Text style={[st.ctaT, { color: '#fff' }]}>{t('common.send')}</Text><Text style={[st.ctaS, { color: 'rgba(255,255,255,.85)' }]}>{t('home.sendSub')}</Text>
+              </View>
+            </Press>
           </View>
-          <Image source={IMG.mascotMain} style={{ width: W * 0.33, height: W * 0.45, flexShrink: 0, marginBottom: 6 }} resizeMode="contain" />
+          <View ref={r.recv} collapsable={false} style={{ flex: 1 }}>
+            <Press onPress={() => nav.navigate('Nearby', { files: [], mode: 'receive' })} style={{ borderRadius: R.cardLg }}>
+              <GlassCard padding={14} radius={R.cardLg}>
+                <Image source={IMG.ico.receive} style={st.ctaImg} resizeMode="contain" />
+                <Text style={st.ctaT}>{t('common.receive')}</Text><Text style={st.ctaS}>{t('home.receiveSub')}</Text>
+              </GlassCard>
+            </Press>
+          </View>
         </FadeIn>
 
         <FadeIn delay={180} style={{ paddingHorizontal: S.padTight, marginTop: 14 }}>

@@ -26,11 +26,10 @@ export default {
   history: { title: 'السجل', empty: 'لا يوجد نقل حتى الآن', emptySub: 'ستظهر ملفاتك المنقولة هنا.', popo: 'هل تريد إرسال ملف؟', received: 'مستلم من {{name}}', sent: 'مرسل إلى {{name}}', devicesTitle: 'الأجهزة', devicesEmpty: 'لا توجد أجهزة حديثة', devicesEmptySub: 'اتصل بجهاز للبدء.' },
   files: { title: 'الملفات', subtitle: 'الوصول إلى كل ملفاتك.', search: 'ابحث عن ملف…', images: 'الصور', videos: 'الفيديو', docs: 'المستندات', musicF: 'الموسيقى', downloads: 'التنزيلات', received: 'المستلمة', items: '{{count}} عناصر', select: 'تحديد' },
   gallery: { title: 'المعرض', search: 'ابحث عن صورة…', all: 'الكل', photos: 'الصور', videos: 'الفيديو', today: 'اليوم', week: 'هذا الأسبوع' },
-  music: { count: '{{count}} مقطوعات', title: 'الموسيقى', search: 'ابحث عن أغنية…', recent: 'الموسيقى الأخيرة', all: 'كل الموسيقى', nowPlaying: 'قيد التشغيل', favorites: 'المفضلة', lockDemo: 'أداة شاشة القفل (معاينة)', lockHint: 'تظهر الأداة فقط على شاشة القفل ومركز التحكم.' },
-  video: { title: 'مشغل الفيديو', pip: 'صورة داخل صورة' },
+  music: { title: 'الموسيقى', search: 'ابحث عن أغنية…', recent: 'الموسيقى الأخيرة', all: 'كل الموسيقى', nowPlaying: 'قيد التشغيل', favorites: 'المفضلة', lockDemo: 'أداة شاشة القفل (معاينة)', lockHint: 'تظهر الأداة فقط على شاشة القفل ومركز التحكم.' },
+  video: { title: 'u0645u0634u063au0644 u0627u0644u0641u064au062fu064au0648', pip: 'Picture in picture', err: 'u0644u0627 u064au0645u0643u0646 u062au0634u063au064au0644 u0647u0630u0627 u0627u0644u0641u064au062fu064au0648' },
   pdf: { title: 'قارئ PDF', page: 'صفحة {{n}} / {{total}}' },
   browser: { title: 'المتصفح', placeholder: 'ابحث أو أدخل عنواناً', tabs: 'علامات التبويب', bookmarks: 'المفضلة', downloads: 'التنزيلات', newTab: 'علامة تبويب جديدة' },
   notifs: { title: 'الإشعارات', empty: 'لا توجد إشعارات', emptySub: 'ستصل طلبات النقل والتنبيهات هنا.', done: 'انتهى النقل', failed: 'انقطع النقل', request: 'طلب نقل' },
   settings: { title: 'الإعدادات', profile: 'الملف الشخصي', language: 'اللغة', character: 'الشخصية', name: 'الاسم', security: 'الأمان', trusted: 'الأجهزة الموثوقة', replay: 'إعادة الجولة الإرشادية', replayGuides: 'إعادة أدلة « عن بُعد »', about: 'حول', version: 'الإصدار', simulateCable: 'محاكاة كابل متصل', demoData: 'تحميل بيانات تجريبية', reset: 'إعادة تعيين التطبيق', autoAccept: 'قبول الأجهزة الموثوقة تلقائياً' },
-  lib: { grant: 'امنح Fylio الوصول إلى ملفاتك', grantSub: 'تظهر الصور والفيديو والموسيقى بعد منح الإذن.', grantBtn: 'السماح بالوصول', import: 'استيراد ملف', imported: 'تم استيراد {{count}} ملفات', empty: 'لا يوجد شيء هنا بعد', older: 'الأقدم', loading: 'جارٍ التحميل…', pdfErr: 'تعذّر فتح هذا الملف.', mediaErr: 'تعذّر تشغيل هذا الملف.' },
 };

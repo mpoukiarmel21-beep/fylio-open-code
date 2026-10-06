@@ -26,11 +26,10 @@ export default {
   history: { title: 'History', empty: 'No transfer yet', emptySub: 'Your transferred files will show up here.', popo: 'Want to send a file?', received: 'Received from {{name}}', sent: 'Sent to {{name}}', devicesTitle: 'Devices', devicesEmpty: 'No recent device', devicesEmptySub: 'Connect a device to get started.' },
   files: { title: 'Files', subtitle: 'Access all your files.', search: 'Search a file…', images: 'Images', videos: 'Videos', docs: 'Documents', musicF: 'Music', downloads: 'Downloads', received: 'Received', items: '{{count}} items', select: 'Select' },
   gallery: { title: 'Gallery', search: 'Search a photo…', all: 'All', photos: 'Photos', videos: 'Videos', today: 'Today', week: 'This week' },
-  music: { count: '{{count}} tracks', title: 'Music', search: 'Search a song…', recent: 'Recent music', all: 'All music', nowPlaying: 'Now playing', favorites: 'Favorites', lockDemo: 'Lock screen widget (preview)', lockHint: 'The widget only appears on the lock screen and control center (expo-audio + Now Playing).' },
-  video: { title: 'Video player', pip: 'Picture in picture' },
+  music: { title: 'Music', search: 'Search a song…', recent: 'Recent music', all: 'All music', nowPlaying: 'Now playing', favorites: 'Favorites', lockDemo: 'Lock screen widget (preview)', lockHint: 'The widget only appears on the lock screen and control center (expo-audio + Now Playing).' },
+  video: { title: 'Video player', pip: 'Picture in picture', err: 'Cannot play this video' },
   pdf: { title: 'PDF reader', page: 'Page {{n}} / {{total}}' },
   browser: { title: 'Browser', placeholder: 'Search or enter an address', tabs: 'Tabs', bookmarks: 'Bookmarks', downloads: 'Downloads', newTab: 'New tab' },
   notifs: { title: 'Notifications', empty: 'No notification', emptySub: 'Transfer requests and alerts will arrive here.', done: 'Transfer complete', failed: 'Transfer interrupted', request: 'Transfer request' },
   settings: { title: 'Settings', profile: 'Profile', language: 'Language', character: 'Character', name: 'First name', security: 'Security', trusted: 'Trusted devices', replay: 'Replay the guided tour', replayGuides: 'Replay the "remote" guides', about: 'About', version: 'Version', simulateCable: 'Simulate a connected cable', demoData: 'Load demo data', reset: 'Reset the app', autoAccept: 'Auto-accept trusted devices' },
-  lib: { grant: 'Give Fylio access to your files', grantSub: 'Photos, videos and music show up once access is allowed.', grantBtn: 'Allow access', import: 'Import a file', imported: '{{count}} files imported', empty: 'Nothing here yet', older: 'Older', loading: 'Loading…', pdfErr: 'This file could not be opened.', mediaErr: 'This file could not be played.' },
 };

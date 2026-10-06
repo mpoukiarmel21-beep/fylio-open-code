@@ -8,7 +8,6 @@ import './src/i18n';
 import { setLanguage } from './src/i18n';
 import { Fonts } from './src/theme';
 import { AppProvider, useApp } from './src/store/AppStore';
-import { LibraryProvider } from './src/data/library';
 import { AppNavigator } from './src/navigation';
 import { engine } from './src/net/engine';
 
@@ -26,9 +25,7 @@ export default function App() {
   if (!loaded) return null;
   return (
     <SafeAreaProvider>
-      <LibraryProvider>
-        <AppProvider><Boot /></AppProvider>
-      </LibraryProvider>
+      <AppProvider><Boot /></AppProvider>
       <StatusBar style="auto" />
     </SafeAreaProvider>
   );

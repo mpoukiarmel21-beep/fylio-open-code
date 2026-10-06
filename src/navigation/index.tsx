@@ -1,4 +1,4 @@
-/** Navigation : RootStack (onboarding + écrans modaux) → Tabs (Accueil / Fichiers / Musique / Galerie) avec la GlassNav personnalisée. */
+/** Navigation : RootStack (onboarding + écrans modaux) → Tabs (Accueil / Fichiers / Galerie / Musique) avec la GlassNav personnalisée. */
 import React from 'react';
 import { View } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
@@ -28,8 +28,8 @@ function TabsNav() {
     <Tabs.Navigator screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: 'transparent' } }} tabBar={(p) => <TabBar {...p} />}>
       <Tabs.Screen name="Home" component={HomeScreen} />
       <Tabs.Screen name="Files" component={FilesScreen} />
-      <Tabs.Screen name="Music" component={MusicScreen} />
       <Tabs.Screen name="Gallery" component={GalleryScreen} />
+      <Tabs.Screen name="Music" component={MusicScreen} />
     </Tabs.Navigator>
   );
 }

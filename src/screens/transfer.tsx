@@ -12,7 +12,6 @@ import { C, F, R, S } from '../theme';
 import { IMG } from '../assets';
 import { useApp } from '../store/AppStore';
 import { FileItem, Device, fmtSize, fmtDur } from '../data/mock';
-import { useLibrary } from '../data/library';
 import { engine, Progress } from '../net/engine';
 import { FileThumb, Pop } from './send';
 import type { RootParams } from '../navigation/types';
@@ -22,31 +21,22 @@ type Nav = NativeStackNavigationProp<RootParams>;
 export function TransferScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
   const app = useApp();
-  const lib = useLibrary();
   const { peer, files, dir } = route.params as { peer: Device; files: FileItem[]; dir: 'sent' | 'received' };
   const [p, setP] = useState<Progress>({ sentBytes: 0, totalBytes: files.reduce((a, f) => a + f.size, 0), fileIndex: 0, speedBps: 0, etaSec: 0 });
   const start = useRef(Date.now());
   const bar = useRef(new Animated.Value(0)).current;
   const handle = useRef<{ cancel: () => void } | null>(null);
   const finished = useRef(false);
-  const lastP = useRef<Progress>({ sentBytes: 0, totalBytes: files.reduce((a, f) => a + f.size, 0), fileIndex: 0, speedBps: 0, etaSec: 0 });
   useEffect(() => {
-    const onProg = (pr: Progress) => {
-      lastP.current = pr;
-      setP(pr);
-      Animated.timing(bar, { toValue: pr.sentBytes / Math.max(pr.totalBytes, 1), duration: 140, easing: Easing.linear, useNativeDriver: false }).start();
-    };
-    const onDone = (ok: boolean) => {
+    handle.current = engine.send(peer, files, (pr) => { setP(pr); Animated.timing(bar, { toValue: pr.sentBytes / pr.totalBytes, duration: 140, easing: Easing.linear, useNativeDriver: false }).start(); }, (ok) => {
       if (finished.current) return; finished.current = true;
       const seconds = Math.round((Date.now() - start.current) / 1000);
       if (ok) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-        if (dir === 'received') void lib.refresh();
         files.forEach((f) => app.addHistory({ id: 'h' + Date.now() + f.id, name: f.name, kind: f.kind, size: f.size, at: Date.now(), dir, peer: peer.name, status: 'done' }));
         nav.replace('TransferDone', { peer, files, seconds, dir });
-      } else nav.replace('TransferFailed', { peer, files, sentCount: lastP.current.fileIndex });
-    };
-    handle.current = dir === 'received' ? engine.receive(files, onProg, onDone) : engine.send(peer, files, onProg, onDone);
+      } else nav.replace('TransferFailed', { peer, files, sentCount: p.fileIndex });
+    });
     return () => { if (!finished.current) { finished.current = true; handle.current?.cancel(); } };
   }, []);
   const ratio = p.sentBytes / Math.max(p.totalBytes, 1);
@@ -54,7 +44,7 @@ export function TransferScreen() {
   const heroX = bar.interpolate({ inputRange: [0, 1], outputRange: [0, W - S.pad * 2 - 90] });
   return (
     <Screen bg={4}>
-      <HeaderBack title={t('transfer.title')} sub={dir === 'sent' ? t('transfer.to', { name: peer.name }) : t('transfer.from', { name: peer.name })} onBack={() => { finished.current = true; handle.current?.cancel(); nav.replace('TransferFailed', { peer, files, sentCount: lastP.current.fileIndex }); }} />
+      <HeaderBack title={t('transfer.title')} sub={dir === 'sent' ? t('transfer.to', { name: peer.name }) : t('transfer.from', { name: peer.name })} onBack={() => { finished.current = true; handle.current?.cancel(); nav.replace('TransferFailed', { peer, files, sentCount: p.fileIndex }); }} />
       <ScrollView contentContainerStyle={{ padding: S.pad, paddingBottom: 30 }}>
         <View style={{ height: W * 0.62, justifyContent: 'flex-end' }}>
           <Animated.View style={{ position: 'absolute', bottom: 0, transform: [{ translateX: heroX }] }}>
@@ -85,7 +75,7 @@ export function TransferScreen() {
           })}
           {files.length > 6 && <Text style={[T.body(), { textAlign: 'center', paddingVertical: 4 }]}>+{files.length - 6} {t('common.filesCount', { count: '' }).trim()}</Text>}
         </GlassCard>
-        <GhostButton label={t('common.cancel')} icon={X} style={{ marginTop: 14 }} onPress={() => { finished.current = true; handle.current?.cancel(); nav.replace('TransferFailed', { peer, files, sentCount: lastP.current.fileIndex }); }} />
+        <GhostButton label={t('common.cancel')} icon={X} style={{ marginTop: 14 }} onPress={() => { finished.current = true; handle.current?.cancel(); nav.replace('TransferFailed', { peer, files, sentCount: p.fileIndex }); }} />
       </ScrollView>
     </Screen>
   );

@@ -1,24 +1,20 @@
 /** 16 Fichiers, 17 Dossier, 18 Galerie, 19 Visionneuse façon Photos, 20 Vidéo, 21 Musique (+ widget lock-screen), 22 Lecteur plein écran, PDF, 23 Navigateur. */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, Animated, FlatList, Dimensions, TextInput, Modal, Pressable, ActivityIndicator, Keyboard } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, Image, ScrollView, StyleSheet, Animated, FlatList, Dimensions, TextInput, Modal, Pressable, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
-import Pdf from 'react-native-pdf';
-import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { Folder, Image as ImgIco, Video, Music, FileText, Download, Inbox, Play, Pause, SkipBack, SkipForward, Heart, Share2, Trash2, Info, X, ChevronLeft, ChevronRight, Globe, Lock, RotateCw, Plus, Bookmark, Volume2, VolumeX, Repeat, Shuffle, Send, ShieldCheck, FolderPlus } from 'lucide-react-native';
-import { Screen, Header, HeaderBack, GlassCard, GlassButton, GhostButton, Press, Search, Chip, T, SectionTitle, FadeIn, W, H, Row, IconButton, useScrollHide } from '../ui';
+import { Folder, Image as ImgIco, Video, Music, FileText, Download, Inbox, Play, Pause, SkipBack, SkipForward, Heart, Share2, Trash2, Info, X, ChevronLeft, ChevronRight, Globe, Lock, RotateCw, Plus, Bookmark, Volume2, Repeat, Shuffle, Send } from 'lucide-react-native';
+import { Screen, Header, HeaderBack, GlassCard, GlassButton, GhostButton, Press, Search, Chip, T, SectionTitle, FadeIn, W, H, Row, IconButton } from '../ui';
 import { NAV_H } from '../ui/GlassNav';
 import { C, F, R, S } from '../theme';
 import { IMG } from '../assets';
 import { useApp } from '../store/AppStore';
-import { FileItem, Song, fmtSize, fmtDur, fmtFileSub } from '../data/mock';
-import { useLibrary, resolveMediaUri } from '../data/library';
-import { FileThumb, PhImage } from './send';
+import { DEMO_FILES, DEMO_DOCS, DEMO_SONGS, FileItem, Song, fmtSize, fmtDur } from '../data/mock';
+import { FileThumb } from './send';
 import type { RootParams } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootParams>;
@@ -30,51 +26,21 @@ const useHeaderProps = () => {
 /* 16 — Fichiers : recherche, 6 dossiers (2 colonnes), personnage dossiers */
 export function FilesScreen() {
   const nav = useNavigation<Nav>(); const { t } = useTranslation(); const hp = useHeaderProps();
-  const lib = useLibrary();
   const [q, setQ] = useState('');
-  const [importing, setImporting] = useState(false);
-  useEffect(() => { lib.ensure(); }, []);
   const folders = [
-    { k: 'images', i: ImgIco, c: '#5BB8FF', n: lib.counts.images }, { k: 'videos', i: Video, c: '#8E8CFF', n: lib.counts.videos },
-    { k: 'docs', i: FileText, c: '#FFB357', n: lib.counts.docs }, { k: 'music', i: Music, c: '#FF7AA2', n: lib.counts.music },
-    { k: 'downloads', i: Download, c: '#38D39F', n: lib.counts.downloads }, { k: 'received', i: Inbox, c: '#2E90FA', n: lib.counts.received },
+    { k: 'images', i: ImgIco, c: '#5BB8FF', n: DEMO_FILES.filter((f) => f.kind === 'photo').length }, { k: 'videos', i: Video, c: '#8E8CFF', n: DEMO_FILES.filter((f) => f.kind === 'video').length },
+    { k: 'docs', i: FileText, c: '#FFB357', n: DEMO_DOCS.length }, { k: 'music', i: Music, c: '#FF7AA2', n: DEMO_SONGS.length },
+    { k: 'downloads', i: Download, c: '#38D39F', n: 3 }, { k: 'received', i: Inbox, c: '#2E90FA', n: 5 },
   ] as const;
-  const granted = lib.perm === 'granted';
-  const total = folders.reduce((a, f) => a + f.n, 0);
-  const hs = useScrollHide();
-  const doImport = async () => { setImporting(true); try { await lib.importDocs(); } finally { setImporting(false); } };
   return (
     <Screen bg={4}>
-      <Animated.View style={hs.wrap}><Header {...hp} /></Animated.View>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: S.padTight + 4, paddingBottom: NAV_H + 40 }} onScroll={hs.onScroll} scrollEventThrottle={16}>
-        <FadeIn style={{ flexDirection: 'row', alignItems: 'flex-end', marginTop: 8 }}>
+      <Header {...hp} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: S.padTight + 4, paddingBottom: NAV_H + 40 }}>
+        <FadeIn style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
           <View style={{ flex: 1 }}><Text style={T.h1()}>{t('files.title')}</Text><Text style={T.lead()}>{t('files.subtitle')}</Text></View>
-          <Image source={IMG.filesMascot} style={{ width: 130, height: 130, flexShrink: 0, marginBottom: 2, marginRight: 4 }} resizeMode="contain" />
+          <Image source={IMG.filesMascot} style={{ width: 110, height: 110 }} resizeMode="contain" />
         </FadeIn>
         <Search placeholder={t('files.search')} value={q} onChange={setQ} style={{ marginTop: 6 }} />
-        {!granted && (
-          <GlassCard style={{ marginTop: 12 }}>
-            <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-              <ShieldCheck size={34} color={C.accent} />
-              <Text style={[T.cardT(), { marginTop: 8, textAlign: 'center' }]}>{t('lib.grant')}</Text>
-              <Text style={[T.body(), { textAlign: 'center', marginTop: 2 }]}>{t('lib.grantSub')}</Text>
-              <View style={{ marginTop: 12 }}><GlassButton label={t('lib.grantBtn')} onPress={() => lib.ask()} /></View>
-            </View>
-          </GlassCard>
-        )}
-        {granted && (
-          <FadeIn delay={40} style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-            <GhostButton icon={FolderPlus} label={importing ? t('lib.loading') : t('lib.import')} onPress={doImport} style={{ flex: 1 }} />
-          </FadeIn>
-        )}
-        {granted && total === 0 && (
-          <GlassCard style={{ marginTop: 12 }}>
-            <View style={{ alignItems: 'center', paddingVertical: 10 }}>
-              <Text style={[T.cardT(), { textAlign: 'center' }]}>{t('lib.empty')}</Text>
-              <View style={{ marginTop: 12 }}><GlassButton label={t('lib.import')} onPress={doImport} /></View>
-            </View>
-          </GlassCard>
-        )}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
           {folders.map((f, i) => (
             <FadeIn key={f.k} delay={60 + i * 50} style={{ width: (W - 24 - 10) / 2 }}>
@@ -95,25 +61,19 @@ export function FilesScreen() {
 /* 17 — Dossier : liste des fichiers, tap → visionneuse / vidéo / PDF ; sélection → Envoyer */
 export function FolderScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
-  const lib = useLibrary(); const pl = usePlayer();
   const { kind, title } = route.params as { kind: string; title: string };
-  const items: FileItem[] = useMemo(() => lib.itemsFor(kind), [kind, lib.images, lib.videos, lib.music, lib.docs, lib.downloads, lib.received]);
+  const items: FileItem[] = useMemo(() => kind === 'images' ? DEMO_FILES.filter((f) => f.kind === 'photo') : kind === 'videos' ? DEMO_FILES.filter((f) => f.kind === 'video') : kind === 'docs' ? DEMO_DOCS : kind === 'music' ? DEMO_SONGS.map((s) => ({ id: s.id, name: s.title + '.mp3', kind: 'music' as const, size: 4e6, date: Date.now(), duration: s.duration })) : DEMO_FILES.slice(0, 5), [kind]);
   const [sel, setSel] = useState<Set<string>>(new Set()); const [mode, setMode] = useState(false);
-  useEffect(() => { lib.ensure(); }, []);
-  const open = (f: FileItem) => {
+  const open = (f: FileItem, i: number) => {
     if (mode) { setSel((s) => { const n = new Set(s); n.has(f.id) ? n.delete(f.id) : n.add(f.id); return n; }); return; }
     if (f.kind === 'photo') nav.navigate('Viewer', { items: items.filter((x) => x.kind === 'photo'), index: items.filter((x) => x.kind === 'photo').indexOf(f) });
-    else if (f.kind === 'video') nav.navigate('Video', { item: f });
-    else if (f.kind === 'music') { const song = lib.songs.find((s) => s.id === f.id); if (song) pl.play(song); nav.navigate('Player'); }
-    else nav.navigate('Pdf', { item: f });
+    else if (f.kind === 'video') nav.navigate('Video', { item: f }); else if (f.kind === 'pdf') nav.navigate('Pdf', { item: f }); else if (f.kind === 'music') nav.navigate('Player'); else nav.navigate('Pdf', { item: f });
   };
-  const sub = (f: FileItem) => fmtFileSub(f);
   return (
     <Screen bg={4}>
       <HeaderBack title={title} sub={t('files.items', { count: items.length })} onBack={() => nav.goBack()} right={<Press onPress={() => { setMode(!mode); setSel(new Set()); }}><Text style={{ fontFamily: F.bodyB, color: C.accent, fontSize: 13 }}>{mode ? t('common.cancel') : t('files.select')}</Text></Press>} />
       <ScrollView contentContainerStyle={{ padding: 10, paddingBottom: 110 }}>
-        {!items.length && <Text style={[T.body(), { textAlign: 'center', paddingTop: 40 }]}>{lib.perm === 'granted' ? t('lib.empty') : t('lib.grantSub')}</Text>}
-        {!!items.length && <GlassCard padding={4}>{items.map((f) => <Row key={f.id} title={f.name} sub={sub(f)} left={<FileThumb f={f} />} onPress={() => open(f)} right={mode ? <View style={[st.chk, sel.has(f.id) && { backgroundColor: C.accent, borderColor: C.accent }]} /> : undefined} />)}</GlassCard>}
+        <GlassCard padding={4}>{items.map((f, i) => <Row key={f.id} title={f.name} sub={`${fmtSize(f.size)}${f.duration ? ' • ' + fmtDur(f.duration) : ''}`} left={<FileThumb f={f} />} onPress={() => open(f, i)} right={mode ? <View style={[st.chk, sel.has(f.id) && { backgroundColor: C.accent, borderColor: C.accent }]} /> : undefined} />)}</GlassCard>
       </ScrollView>
       {mode && sel.size > 0 && <View style={{ position: 'absolute', left: 14, right: 14, bottom: 24 }}><GlassButton label={`${t('common.send')} (${sel.size})`} icon={Send} onPress={() => nav.navigate('Nearby', { files: items.filter((f) => sel.has(f.id)), mode: 'send' })} /></View>}
     </Screen>
@@ -123,45 +83,29 @@ export function FolderScreen() {
 /* 18 — Galerie : chips Tout/Photos/Vidéos, grille 3 colonnes groupée par date, personnage à droite */
 export function GalleryScreen() {
   const nav = useNavigation<Nav>(); const { t } = useTranslation(); const hp = useHeaderProps();
-  const lib = useLibrary();
   const [filter, setFilter] = useState<'all' | 'photos' | 'videos'>('all'); const [q, setQ] = useState('');
-  useEffect(() => { lib.ensure(); }, []);
-  const items = useMemo(() => {
-    const all = filter === 'all' ? [...lib.images, ...lib.videos] : filter === 'photos' ? lib.images : lib.videos;
-    const sorted = [...all].sort((a, b) => b.date - a.date);
-    return q ? sorted.filter((f) => f.name.toLowerCase().includes(q.toLowerCase())) : sorted;
-  }, [filter, q, lib.images, lib.videos]);
+  const items = DEMO_FILES.filter((f) => filter === 'all' || (filter === 'photos' ? f.kind === 'photo' : f.kind === 'video'));
   const cell = (W - 16 - 6 * 2) / 3;
-  const now = Date.now();
-  const dayMs = 864e5;
-  const hs = useScrollHide();
-  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
-  const groups = [
-    { k: 'today', list: items.filter((f) => f.date >= startOfToday.getTime()) },
-    { k: 'week', list: items.filter((f) => f.date < startOfToday.getTime() && f.date >= now - 7 * dayMs) },
-    { k: 'older', list: items.filter((f) => f.date < now - 7 * dayMs) },
-  ];
+  const groups = [{ k: 'today', list: items.slice(0, 6) }, { k: 'week', list: items.slice(6) }];
   return (
     <Screen bg={4}>
-      <Animated.View style={hs.wrap}><Header {...hp} /></Animated.View>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: NAV_H + 40 }} onScroll={hs.onScroll} scrollEventThrottle={16}>
-        <FadeIn style={{ flexDirection: 'row', alignItems: 'flex-end', marginTop: 8 }}>
+      <Header {...hp} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: NAV_H + 40 }}>
+        <FadeIn style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
           <View style={{ flex: 1 }}><Text style={T.h1()}>{t('gallery.title')}</Text><Text style={T.lead()}>{items.length} {t('gallery.photos').toLowerCase()} & {t('gallery.videos').toLowerCase()}</Text></View>
-          <Image source={IMG.galleryMascot} style={{ width: 150, height: 146, flexShrink: 0, marginBottom: 2, marginRight: 4 }} resizeMode="contain" />
+          <Image source={IMG.galleryMascot} style={{ width: 120, height: 125 }} resizeMode="contain" />
         </FadeIn>
         <Search placeholder={t('gallery.search')} value={q} onChange={setQ} />
         <View style={{ flexDirection: 'row', gap: 8, marginVertical: 10 }}>{(['all', 'photos', 'videos'] as const).map((k) => <Chip key={k} label={t(`gallery.${k}`)} active={filter === k} onPress={() => setFilter(k)} />)}</View>
-        {!items.length && <Text style={[T.body(), { textAlign: 'center', paddingTop: 24 }]}>{lib.perm === 'granted' ? t('lib.empty') : t('lib.grantSub')}</Text>}
         {groups.map((g) => g.list.length > 0 && (
           <View key={g.k} style={{ marginBottom: 10 }}>
-            <Text style={[T.cardT(), { marginBottom: 6, marginLeft: 2 }]}>{g.k === 'older' ? t('lib.older') : t(`gallery.${g.k}`)}</Text>
+            <Text style={[T.cardT(), { marginBottom: 6, marginLeft: 2 }]}>{t(`gallery.${g.k}`)}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
               {g.list.map((f, i) => (
                 <Press key={f.id} scale={0.95} onPress={() => f.kind === 'video' ? nav.navigate('Video', { item: f }) : nav.navigate('Viewer', { items: items.filter((x) => x.kind === 'photo'), index: items.filter((x) => x.kind === 'photo').indexOf(f) })}>
                   <View style={{ width: cell, height: cell, borderRadius: 12, overflow: 'hidden' }}>
                     <LinearGradient colors={[`hsl(${200 + (i * 17) % 50}, 85%, 70%)`, `hsl(${215 + (i * 11) % 40}, 80%, 50%)`]} style={StyleSheet.absoluteFill} />
-                    <PhImage uri={f.uri} style={StyleSheet.absoluteFill as any} contentFit="cover" />
-                    {f.kind === 'video' && !!f.duration && <View style={st.vidBadge}><Play size={10} color="#fff" fill="#fff" /><Text style={{ color: '#fff', fontSize: 10, fontFamily: F.bodyB }}>{fmtDur(f.duration)}</Text></View>}
+                    {f.kind === 'video' && <View style={st.vidBadge}><Play size={10} color="#fff" fill="#fff" /><Text style={{ color: '#fff', fontSize: 10, fontFamily: F.bodyB }}>0:{f.duration}</Text></View>}
                   </View>
                 </Press>
               ))}
@@ -182,10 +126,10 @@ export function ViewerScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       <FlatList data={items} horizontal pagingEnabled initialScrollIndex={i} getItemLayout={(_, k) => ({ length: W, offset: W * k, index: k })} keyExtractor={(f) => f.id} onMomentumScrollEnd={(e) => setI(Math.round(e.nativeEvent.contentOffset.x / W))} showsHorizontalScrollIndicator={false}
-        renderItem={({ item }) => <Press onPress={() => setUi(!ui)} scale={1}><View style={{ width: W, height: H, backgroundColor: '#000' }}><PhImage uri={item.uri} direct style={{ width: '100%', height: '100%' } as any} contentFit="contain" /></View></Press>} />
+        renderItem={({ item, index: k }) => <Press onPress={() => setUi(!ui)} scale={1}><View style={{ width: W, height: H, alignItems: 'center', justifyContent: 'center' }}><LinearGradient colors={[`hsl(${200 + (k * 17) % 50}, 85%, 70%)`, `hsl(${215 + (k * 11) % 40}, 80%, 45%)`]} style={{ width: W, height: W * 1.25, borderRadius: 4 }} /></View></Press>} />
       <Animated.View style={[st.viewerTop, { opacity: op }]} pointerEvents={ui ? 'auto' : 'none'}>
         <IconButton icon={ChevronLeft} deep onPress={() => nav.goBack()} />
-        <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: '#fff', fontFamily: F.bodyB }}>{items[i]?.name}</Text><Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 12 }}>{[`${i + 1} / ${items.length}`, fmtFileSub(items[i])].filter(Boolean).join(' • ')}</Text></View>
+        <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: '#fff', fontFamily: F.bodyB }}>{items[i]?.name}</Text><Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 12 }}>{i + 1} / {items.length} • {fmtSize(items[i]?.size ?? 0)}</Text></View>
         <View style={{ width: 40 }} />
       </Animated.View>
       <Animated.View style={[st.viewerBar, { opacity: op }]} pointerEvents={ui ? 'auto' : 'none'}>
@@ -194,207 +138,108 @@ export function ViewerScreen() {
     </View>
   );
 }
-/* 20 — Lecteur vidéo : expo-video réel (autoplay après chargement, barre cliquable, mute, états loading/erreur) */
-/** variantes d'URI jouables : brut puis percent-encodé (noms français avec espaces/accents cassent AVPlayer) */
-const uriVariants = (u: string): string[] => {
-  const out = [u];
-  if (u.startsWith('file://')) {
-    try { const e = encodeURI(decodeURI(u)); if (e !== u) out.push(e); }
-    catch { try { const e = encodeURI(u); if (e !== u) out.push(e); } catch { /* URI déjà normalisée */ } }
-  }
-  return out;
-};
+/* 20 - Lecteur video : expo-video reel (autoplay, progression reelle, seek, etats loading/erreur), commandes vitrees */
+const SAMPLE_VIDEO = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
 export function VideoScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
   const { item } = route.params as { item: FileItem };
-  const player = useVideoPlayer(null, (p) => { p.loop = false; p.timeUpdateEventInterval = 0.5; });
-  const [state, setState] = useState({ pos: 0, dur: item.duration ?? 0, playing: false, loading: true, err: false });
-  const [muted, setMuted] = useState(false);
+  const player = useVideoPlayer(SAMPLE_VIDEO, (p) => { p.loop = false; p.timeUpdateEventInterval = 0.5; });
+  const [pos, setPos] = useState(0); const [dur, setDur] = useState(item.duration ?? 0);
+  const [playing, setPlaying] = useState(false); const [loading, setLoading] = useState(true); const [err, setErr] = useState(false);
   const [trackW, setTrackW] = useState(1);
-  const stateRef = useRef(state);
-  useEffect(() => { stateRef.current = state; }, [state]);
-  useEffect(() => {
-    let alive = true;
-    setState((s) => ({ ...s, loading: true, err: false }));
-    (async () => {
-      const resolved = await resolveMediaUri(item.uri).catch(() => null);
-      const chain: string[] = [];
-      for (const c of [resolved, item.uri]) if (c) for (const v of uriVariants(c)) if (!chain.includes(v)) chain.push(v);
-      for (const u of chain) {
-        if (!alive) return;
-        try {
-          await player.replaceAsync(u);
-          if (alive) { player.play(); setState((s) => ({ ...s, loading: false })); }
-          return;
-        } catch { /* essaie l'URI suivante */ }
-      }
-      if (alive) setState((s) => ({ ...s, err: true, loading: false }));
-    })();
-    return () => { alive = false; };
-  }, [item.uri]);
   useEffect(() => {
     const subs: any[] = [];
     try {
-      subs.push(player.addListener('timeUpdate', (e: any) => {
-        setState((s) => ({ ...s, pos: e.currentTime ?? 0, dur: player.duration || s.dur, playing: player.playing }));
-      }));
+      subs.push(player.addListener('timeUpdate', (e: any) => { setPos(e.currentTime ?? 0); setDur(player.duration || dur); }));
       subs.push(player.addListener('statusChange', (e: any) => {
         const stt: string = e?.status ?? player.status;
-        setState((s) => ({ ...s, err: stt === 'error', loading: stt === 'loading', dur: player.duration || s.dur, playing: player.playing }));
+        setLoading(stt === 'loading'); setErr(stt === 'error'); setPlaying(player.playing);
+        if (stt === 'readyToPlay') { try { player.play(); } catch { /* lecture auto refusee */ } }
       }));
-      subs.push(player.addListener('playToEnd', () => setState((s) => ({ ...s, pos: 0, playing: false }))));
-    } catch { /* listeners indisponibles : l'état reste piloté par la lecture directe */ }
-    return () => subs.forEach((x) => { try { x?.remove?.(); } catch { /* déjà relâché */ } });
+      subs.push(player.addListener('playToEnd', () => { setPlaying(false); setPos(0); }));
+    } catch { /* listeners indisponibles : etats pilotes par les controles */ }
+    return () => subs.forEach((s) => { try { s?.remove?.(); } catch { /* deja relache */ } });
   }, []);
-  const seekTo = (v: number) => { const d = stateRef.current.dur || player.duration || 0; const nv = Math.max(0, Math.min(d || 1e9, v)); player.currentTime = nv; setState((s) => ({ ...s, pos: nv })); };
-  const seek = (delta: number) => seekTo(stateRef.current.pos + delta);
-  const toggle = () => { if (state.playing) player.pause(); else player.play(); };
-  const toggleMute = () => { const m = !muted; try { player.muted = m; } catch { /* iOS: réglage non dispo */ } setMuted(m); };
-  const dur = state.dur || item.duration || 1;
+  const seekTo = (v: number) => { const d = dur || player.duration || 0; const nv = Math.max(0, Math.min(d || 1e9, v)); try { player.currentTime = nv; } catch { /* seek non disponible */ } setPos(nv); };
+  const toggle = () => { try { if (player.playing) player.pause(); else player.play(); } catch { /* lecture non disponible */ } };
+  const total = dur || player.duration || item.duration || 1;
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
-      <View style={{ flex: 1 }}>
-        {!state.err && <VideoView player={player} style={{ width: '100%', height: '100%' }} contentFit="contain" nativeControls={false} allowsPictureInPicture />}
-        {state.err && (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 30 }}>
+      <View style={{ flex: 1, justifyContent: 'center' }}>
+        {!err && <VideoView player={player} style={{ width: W, height: W * 0.56 }} contentFit="contain" nativeControls={false} allowsPictureInPicture />}
+        {err && (
+          <View style={{ alignItems: 'center', gap: 10, paddingHorizontal: 30 }}>
             <Video size={42} color="rgba(255,255,255,.55)" />
-            <Text style={{ color: 'rgba(255,255,255,.85)', fontFamily: F.bodyB, fontSize: 13, textAlign: 'center' }}>{t('lib.mediaErr')}</Text>
+            <Text style={{ color: 'rgba(255,255,255,.85)', fontFamily: F.bodyB, fontSize: 13, textAlign: 'center' }}>{t('video.err')}</Text>
             <Text style={{ color: 'rgba(255,255,255,.55)', fontFamily: F.body, fontSize: 12, textAlign: 'center' }} numberOfLines={2}>{item.name}</Text>
           </View>
         )}
-        {state.loading && !state.err && (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator size="large" color="#fff" />
-          </View>
-        )}
+        {loading && !err && <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" color="#fff" /></View>}
       </View>
       <View style={st.viewerTop}><IconButton icon={ChevronLeft} deep onPress={() => nav.goBack()} /><Text style={{ flex: 1, textAlign: 'center', color: '#fff', fontFamily: F.bodyB }} numberOfLines={1}>{item.name}</Text><View style={{ width: 40 }} /></View>
       <View style={{ position: 'absolute', left: 14, right: 14, bottom: 40 }}>
         <GlassCard deep padding={14}>
-          <Pressable onPress={(e) => seekTo((e.nativeEvent.locationX / Math.max(1, trackW)) * dur)} style={{ paddingVertical: 6 }}>
-            <View onLayout={(e) => setTrackW(e.nativeEvent.layout.width)} style={st.track}>
-              <View style={[st.fill, { width: `${Math.min(100, (state.pos / dur) * 100)}%` }]} />
-            </View>
+          <Pressable onPress={(e) => seekTo((e.nativeEvent.locationX / Math.max(1, trackW)) * total)} style={{ paddingVertical: 6 }}>
+            <View onLayout={(e) => setTrackW(e.nativeEvent.layout.width)} style={st.track}><View style={[st.fill, { width: `${Math.min(100, (pos / total) * 100)}%` }]} /></View>
           </Pressable>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}><Text style={T.body(true)}>{fmtDur(state.pos)}</Text><Text style={T.body(true)}>{fmtDur(dur)}</Text></View>
-          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 24, marginTop: 8 }}>
-            <Press onPress={toggleMute} hit={8}>{muted ? <VolumeX size={20} color={muted ? '#FF7AA2' : 'rgba(255,255,255,.8)'} /> : <Volume2 size={20} color="rgba(255,255,255,.85)" />}</Press>
-            <Press onPress={() => seek(-10)}><SkipBack size={26} color="#fff" /></Press>
-            <Press onPress={toggle}><View style={st.playBig}>{state.playing ? <Pause size={26} color={C.ink} fill={C.ink} /> : <Play size={26} color={C.ink} fill={C.ink} />}</View></Press>
-            <Press onPress={() => seek(10)}><SkipForward size={26} color="#fff" /></Press>
-            <View style={{ width: 20 }} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}><Text style={T.body(true)}>{fmtDur(pos)}</Text><Text style={T.body(true)}>{fmtDur(total)}</Text></View>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 26, marginTop: 8 }}>
+            <Press onPress={() => seekTo(pos - 10)}><SkipBack size={26} color="#fff" /></Press>
+            <Press onPress={toggle}><View style={st.playBig}>{playing ? <Pause size={26} color={C.ink} fill={C.ink} /> : <Play size={26} color={C.ink} fill={C.ink} />}</View></Press>
+            <Press onPress={() => seekTo(pos + 10)}><SkipForward size={26} color="#fff" /></Press>
           </View>
         </GlassCard>
       </View>
     </View>
   );
-}
-/* PDF — react-native-pdf sur le fichier réel (sandbox ou asset résolu) */
+}/* PDF — WebView (Google Docs viewer pour une URL ; pour un fichier local : expo-file-system + pdf.js) */
 export function PdfScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
   const { item } = route.params as { item: FileItem };
-  const [src, setSrc] = useState<string | null>(null);
-  const [err, setErr] = useState(false);
-  const [page, setPage] = useState(1); const [pages, setPages] = useState(0);
-  useEffect(() => {
-    let alive = true;
-    resolveMediaUri(item.uri).then((u) => { if (!alive) return; if (u) setSrc(u); else setErr(true); }).catch(() => alive && setErr(true));
-    return () => { alive = false; };
-  }, [item.uri]);
   return (
     <Screen bg={4}>
-      <HeaderBack title={item.name} sub={pages ? t('pdf.page', { n: page, total: pages }) : t('pdf.title')} onBack={() => nav.goBack()} compact />
+      <HeaderBack title={item.name} sub={t('pdf.title')} onBack={() => nav.goBack()} compact />
       <View style={{ flex: 1, margin: 10, borderRadius: R.card, overflow: 'hidden', backgroundColor: '#fff' }}>
-        {src && !err ? (
-          <Pdf source={{ uri: src, cache: true }} style={{ flex: 1 }} fitPolicy={0}
-            onLoadComplete={(n) => setPages(n)} onPageChanged={(p, n) => { setPage(p); setPages(n); }}
-            onError={() => setErr(true)} enableAntialiasing />
-        ) : (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-            <FileText size={40} color={C.mute} />
-            <Text style={[T.body(), { textAlign: 'center', marginTop: 10 }]}>{err ? t('lib.pdfErr') : t('lib.loading')}</Text>
-          </View>
-        )}
+        <WebView source={{ uri: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }} style={{ flex: 1 }} />
       </View>
     </Screen>
   );
 }
 
 /* 21 — Musique (fond foncé) : recherche, bloc Musique récente, bloc Toutes les musiques, mini-lecteur ; 22 — Lecteur plein écran ; 22b — aperçu widget lock-screen */
-export const PlayerCtx = React.createContext<{ song: Song | null; playing: boolean; pos: number; dur: number; play: (s: Song) => void; toggle: () => void; next: () => void; prev: () => void } | null>(null);
+export const PlayerCtx = React.createContext<{ song: Song | null; playing: boolean; pos: number; play: (s: Song) => void; toggle: () => void; next: () => void; prev: () => void } | null>(null);
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
-  const { songs } = useLibrary();
-  const player = useAudioPlayer(null, { updateInterval: 500 });
-  const status = useAudioPlayerStatus(player);
-  const [song, setSong] = useState<Song | null>(null);
-  const modeRef = useRef(false);
-  useEffect(() => {
-    if (modeRef.current) return;
-    modeRef.current = true;
-    setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false, interruptionMode: 'doNotMix' }).catch(() => {});
-  }, []);
-  const play = (s: Song) => {
-    setSong(s);
-    const raw = s.uri ?? s.id;
-    if (!raw) return;
-    resolveMediaUri(raw)
-      .catch(() => null)
-      .then((u) => {
-        try { player.replace(u ?? raw); player.play(); } catch { /* audio média iOS non résoluble : on garde l'état UI */ }
-        try { player.setActiveForLockScreen(true, { title: s.title, artist: s.artist || undefined }); } catch { /* lock-screen non supporté */ }
-      });
-  };
-  const idx = song ? songs.findIndex((s) => s.id === song.id) : -1;
-  const next = () => { if (!songs.length) return; play(songs[(idx + 1) % songs.length]); };
-  const prev = () => { if (!songs.length) return; play(songs[(idx - 1 + songs.length) % songs.length]); };
-  const done = status.didJustFinish;
-  useEffect(() => { if (done) next(); }, [done]);
-  const toggle = () => { if (!song) return; if (status.playing) player.pause(); else player.play(); };
-  return <PlayerCtx.Provider value={{ song, playing: !!status.playing && !!song, pos: Math.floor(status.currentTime || 0), dur: status.duration || 0, play, toggle, next, prev }}>{children}</PlayerCtx.Provider>;
+  const [song, setSong] = useState<Song | null>(null); const [playing, setPlaying] = useState(false); const [pos, setPos] = useState(0);
+  useEffect(() => { if (!playing || !song) return; const iv = setInterval(() => setPos((p) => p + 1 >= song.duration ? (next(), 0) : p + 1), 1000); return () => clearInterval(iv); }, [playing, song]);
+  const idx = song ? DEMO_SONGS.findIndex((s) => s.id === song.id) : -1;
+  const play = (s: Song) => { setSong(s); setPos(0); setPlaying(true); };
+  const next = () => play(DEMO_SONGS[(idx + 1) % DEMO_SONGS.length]); const prev = () => play(DEMO_SONGS[(idx - 1 + DEMO_SONGS.length) % DEMO_SONGS.length]);
+  return <PlayerCtx.Provider value={{ song, playing, pos, play, toggle: () => setPlaying(!playing), next, prev }}>{children}</PlayerCtx.Provider>;
 }
 export const usePlayer = () => { const v = React.useContext(PlayerCtx); if (!v) throw new Error('PlayerProvider'); return v; };
 const Cover = ({ s, size = 44 }: { s: Song; size?: number }) => <LinearGradient colors={[`hsl(${(s.id.charCodeAt(1) * 47) % 360}, 75%, 65%)`, `hsl(${(s.id.charCodeAt(1) * 47 + 40) % 360}, 80%, 45%)`]} style={{ width: size, height: size, borderRadius: size * 0.25, alignItems: 'center', justifyContent: 'center' }}><Music size={size * 0.45} color="rgba(255,255,255,.9)" /></LinearGradient>;
 
 export function MusicScreen() {
   const nav = useNavigation<Nav>(); const { t } = useTranslation(); const hp = useHeaderProps(); const pl = usePlayer();
-  const lib = useLibrary();
   const [q, setQ] = useState(''); const [widget, setWidget] = useState(false);
-  const hs = useScrollHide();
-  useEffect(() => { if (lib.perm === 'unknown') lib.ask(); else lib.ensure(); }, []);
-  const list = lib.songs.filter((s) => s.title.toLowerCase().includes(q.toLowerCase()));
-  const recent = list.slice(0, 4);
-  const songSub = (s: Song) => [s.artist, s.duration > 0 ? fmtDur(s.duration) : ''].filter(Boolean).join(' • ');
+  const list = DEMO_SONGS.filter((s) => s.title.toLowerCase().includes(q.toLowerCase()));
   return (
     <Screen bg={1}>
-      <Animated.View style={hs.wrap}><Header {...hp} deep /></Animated.View>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: NAV_H + 110 }} onScroll={hs.onScroll} scrollEventThrottle={16}>
-        <FadeIn style={{ flexDirection: 'row', alignItems: 'flex-end', marginTop: 8 }}>
-          <View style={{ flex: 1 }}><Text style={T.h1(true)}>{t('music.title')}</Text><Text style={T.lead(true)}>{t('music.count', { count: lib.songs.length })}</Text></View>
-          <Image source={IMG.musicMascot} style={{ width: 146, height: 150, flexShrink: 0, marginBottom: 2, marginRight: 4 }} resizeMode="contain" />
+      <Header {...hp} deep />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: NAV_H + 110 }}>
+        <FadeIn style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+          <View style={{ flex: 1 }}><Text style={T.h1(true)}>{t('music.title')}</Text><Text style={T.lead(true)}>{DEMO_SONGS.length} titres</Text></View>
+          <Image source={IMG.musicMascot} style={{ width: 115, height: 120 }} resizeMode="contain" />
         </FadeIn>
         <Search deep placeholder={t('music.search')} value={q} onChange={setQ} style={{ marginTop: 4 }} />
-        {!lib.songs.length && (
-          <GlassCard deep style={{ marginTop: 12 }}>
-            <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-              <Text style={[T.body(true), { textAlign: 'center' }]}>{lib.perm === 'granted' ? t('lib.empty') : t('lib.grantSub')}</Text>
-              <View style={{ marginTop: 12, alignSelf: 'stretch' }}>
-                <GhostButton deep small label={lib.perm === 'granted' ? t('lib.import') : t('lib.grantBtn')} icon={lib.perm === 'granted' ? Plus : undefined} onPress={() => { if (lib.perm === 'granted') { lib.importDocs(); } else { lib.ask(); } }} />
-              </View>
-            </View>
-          </GlassCard>
-        )}
-        {!!recent.length && (
-          <GlassCard deep padding={10} style={{ marginTop: 12 }}>
-            <SectionTitle deep title={t('music.recent')} action={t('music.lockDemo')} onAction={() => setWidget(true)} />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>{recent.map((s) => <Press key={s.id} onPress={() => pl.play(s)} style={{ width: 96 }}><Cover s={s} size={96} /><Text style={[T.strong(true), { fontSize: 12, marginTop: 4 }]} numberOfLines={1}>{s.title}</Text><Text style={[T.body(true), { fontSize: 11 }]} numberOfLines={1}>{s.artist}</Text></Press>)}</ScrollView>
-          </GlassCard>
-        )}
-        {!!list.length && (
-          <GlassCard deep padding={6} style={{ marginTop: 10 }}>
-            <View style={{ paddingHorizontal: 6, paddingTop: 4 }}><SectionTitle deep title={t('music.all')} /></View>
-            {list.map((s) => <Row key={s.id} deep tight title={s.title} sub={songSub(s)} left={<Cover s={s} />} onPress={() => pl.play(s)} right={pl.song?.id === s.id ? <Bars /> : s.fav ? <Heart size={16} color="#FF7AA2" fill="#FF7AA2" /> : <View style={{ width: 16 }} />} />)}
-          </GlassCard>
-        )}
+        <GlassCard deep padding={10} style={{ marginTop: 12 }}>
+          <SectionTitle deep title={t('music.recent')} action={t('music.lockDemo')} onAction={() => setWidget(true)} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>{DEMO_SONGS.slice(0, 4).map((s) => <Press key={s.id} onPress={() => pl.play(s)} style={{ width: 96 }}><Cover s={s} size={96} /><Text style={[T.strong(true), { fontSize: 12, marginTop: 4 }]} numberOfLines={1}>{s.title}</Text><Text style={[T.body(true), { fontSize: 11 }]} numberOfLines={1}>{s.artist}</Text></Press>)}</ScrollView>
+        </GlassCard>
+        <GlassCard deep padding={6} style={{ marginTop: 10 }}>
+          <View style={{ paddingHorizontal: 6, paddingTop: 4 }}><SectionTitle deep title={t('music.all')} /></View>
+          {list.map((s) => <Row key={s.id} deep tight title={s.title} sub={`${s.artist} • ${fmtDur(s.duration)}`} left={<Cover s={s} />} onPress={() => pl.play(s)} right={pl.song?.id === s.id ? <Bars /> : s.fav ? <Heart size={16} color="#FF7AA2" fill="#FF7AA2" /> : <View style={{ width: 16 }} />} />)}
+        </GlassCard>
       </ScrollView>
       {pl.song && <MiniPlayer onOpen={() => nav.navigate('Player')} />}
       <Modal visible={widget} transparent animationType="fade" onRequestClose={() => setWidget(false)}><LockWidgetPreview onClose={() => setWidget(false)} /></Modal>
@@ -409,7 +254,6 @@ function Bars() {
 /* Mini-lecteur au-dessus de la barre du bas */
 export function MiniPlayer({ onOpen }: { onOpen: () => void }) {
   const pl = usePlayer(); if (!pl.song) return null;
-  const dur = pl.dur || pl.song.duration || 1;
   return (
     <View style={{ position: 'absolute', left: 14, right: 14, bottom: NAV_H + 26 }}>
       <Press onPress={onOpen}>
@@ -420,7 +264,7 @@ export function MiniPlayer({ onOpen }: { onOpen: () => void }) {
             <Press onPress={pl.toggle} hit={8}>{pl.playing ? <Pause size={24} color="#fff" fill="#fff" /> : <Play size={24} color="#fff" fill="#fff" />}</Press>
             <Press onPress={pl.next} hit={8}><SkipForward size={22} color="#fff" /></Press>
           </View>
-          <View style={[st.track, { height: 3, marginTop: 8, backgroundColor: 'rgba(255,255,255,.25)' }]}><View style={[st.fill, { width: `${Math.min(100, (pl.pos / dur) * 100)}%`, backgroundColor: '#fff' }]} /></View>
+          <View style={[st.track, { height: 3, marginTop: 8, backgroundColor: 'rgba(255,255,255,.25)' }]}><View style={[st.fill, { width: `${(pl.pos / pl.song.duration) * 100}%`, backgroundColor: '#fff' }]} /></View>
         </GlassCard>
       </Press>
     </View>
@@ -429,26 +273,17 @@ export function MiniPlayer({ onOpen }: { onOpen: () => void }) {
 /* 22 — Lecteur plein écran : pochette, titre, barre de progression + minutes lisibles, commandes SOUS la barre */
 export function PlayerScreen() {
   const nav = useNavigation<Nav>(); const { t } = useTranslation(); const pl = usePlayer();
-  const { songs } = useLibrary();
-  useEffect(() => { if (!pl.song && songs.length) pl.play(songs[0]); }, [songs.length]);
-  const s = pl.song ?? songs[0] ?? null;
-  if (!s) return (
-    <Screen bg={1}>
-      <HeaderBack deep title={t('music.nowPlaying')} onBack={() => nav.goBack()} />
-      <Text style={[T.body(true), { textAlign: 'center', paddingTop: 40 }]}>{t('lib.empty')}</Text>
-    </Screen>
-  );
-  const dur = pl.dur || s.duration || 1;
+  useEffect(() => { if (!pl.song) pl.play(DEMO_SONGS[0]); }, []);
+  const s = pl.song ?? DEMO_SONGS[0];
   return (
     <Screen bg={1}>
       <HeaderBack deep title={t('music.nowPlaying')} onBack={() => nav.goBack()} />
       <View style={{ flex: 1, alignItems: 'center', padding: S.pad }}>
         <FadeIn><View style={{ shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 30, shadowOffset: { width: 0, height: 16 }, elevation: 12 }}><Cover s={s} size={W * 0.7} /></View></FadeIn>
-        <Text style={[T.h1(true), { fontSize: 24, marginTop: 24 }]}>{s.title}</Text>
-        {!!s.artist && <Text style={T.lead(true)}>{s.artist}</Text>}
+        <Text style={[T.h1(true), { fontSize: 24, marginTop: 24 }]}>{s.title}</Text><Text style={T.lead(true)}>{s.artist}</Text>
         <GlassCard deep padding={14} style={{ alignSelf: 'stretch', marginTop: 22 }}>
-          <View style={[st.track, { backgroundColor: 'rgba(255,255,255,.3)' }]}><View style={[st.fill, { width: `${Math.min(100, (pl.pos / dur) * 100)}%`, backgroundColor: '#fff' }]} /></View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}><Text style={[T.strong(true), { fontSize: 13 }]}>{fmtDur(pl.pos)}</Text><Text style={[T.strong(true), { fontSize: 13 }]}>-{fmtDur(Math.max(0, dur - pl.pos))}</Text></View>
+          <View style={[st.track, { backgroundColor: 'rgba(255,255,255,.3)' }]}><View style={[st.fill, { width: `${(pl.pos / s.duration) * 100}%`, backgroundColor: '#fff' }]} /></View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}><Text style={[T.strong(true), { fontSize: 13 }]}>{fmtDur(pl.pos)}</Text><Text style={[T.strong(true), { fontSize: 13 }]}>-{fmtDur(s.duration - pl.pos)}</Text></View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, paddingHorizontal: 6 }}>
             <Press hit={8}><Shuffle size={20} color="rgba(255,255,255,.8)" /></Press>
             <Press onPress={pl.prev} hit={8}><SkipBack size={30} color="#fff" fill="#fff" /></Press>
@@ -464,18 +299,16 @@ export function PlayerScreen() {
 }
 /* 22b — Aperçu du widget écran verrouillé / centre de contrôle (pochette, titre, progression, commandes). En production : expo-audio + métadonnées Now Playing (voir README). */
 function LockWidgetPreview({ onClose }: { onClose: () => void }) {
-  const pl = usePlayer(); const { t } = useTranslation(); const s = pl.song;
-  if (!s) return null;
-  const dur = pl.dur || s.duration || 1;
+  const pl = usePlayer(); const { t } = useTranslation(); const s = pl.song ?? DEMO_SONGS[0];
   return (
     <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,.7)', justifyContent: 'center', padding: 24 }}>
       <Press onPress={onClose} style={StyleSheet.absoluteFill} scale={1}><View /></Press>
       <Text style={{ color: '#fff', fontFamily: F.title, fontSize: 56, textAlign: 'center' }}>{new Date().toTimeString().slice(0, 5)}</Text>
       <View style={{ borderRadius: 26, overflow: 'hidden', marginTop: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,.35)' }}>
         <LinearGradient colors={['rgba(255,255,255,.28)', 'rgba(255,255,255,.14)']} style={{ padding: 14 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Cover s={s} size={56} /><View style={{ flex: 1 }}><Text style={{ color: '#fff', fontFamily: F.bodyX, fontSize: 16 }}>{s.title}</Text><Text style={{ color: 'rgba(255,255,255,.8)', fontFamily: F.body }}>{[s.artist, 'Fylio'].filter(Boolean).join(' — ')}</Text></View></View>
-          <View style={[st.track, { height: 5, marginTop: 12, backgroundColor: 'rgba(255,255,255,.3)' }]}><View style={[st.fill, { width: `${Math.min(100, (pl.pos / dur) * 100)}%`, backgroundColor: '#fff' }]} /></View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ color: '#fff', fontSize: 12, fontFamily: F.bodyB }}>{fmtDur(pl.pos)}</Text><Text style={{ color: '#fff', fontSize: 12, fontFamily: F.bodyB }}>-{fmtDur(Math.max(0, dur - pl.pos))}</Text></View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Cover s={s} size={56} /><View style={{ flex: 1 }}><Text style={{ color: '#fff', fontFamily: F.bodyX, fontSize: 16 }}>{s.title}</Text><Text style={{ color: 'rgba(255,255,255,.8)', fontFamily: F.body }}>{s.artist} — Fylio</Text></View></View>
+          <View style={[st.track, { height: 5, marginTop: 12, backgroundColor: 'rgba(255,255,255,.3)' }]}><View style={[st.fill, { width: `${(pl.pos / s.duration) * 100}%`, backgroundColor: '#fff' }]} /></View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ color: '#fff', fontSize: 12, fontFamily: F.bodyB }}>{fmtDur(pl.pos)}</Text><Text style={{ color: '#fff', fontSize: 12, fontFamily: F.bodyB }}>-{fmtDur(s.duration - pl.pos)}</Text></View>
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 36, marginTop: 10 }}>
             <Press onPress={pl.prev}><SkipBack size={28} color="#fff" fill="#fff" /></Press>
             <Press onPress={pl.toggle}>{pl.playing ? <Pause size={34} color="#fff" fill="#fff" /> : <Play size={34} color="#fff" fill="#fff" />}</Press>
@@ -488,167 +321,37 @@ function LockWidgetPreview({ onClose }: { onClose: () => void }) {
   );
 }
 
-/* 23 — Navigateur plein écran façon Chrome : barre d'adresse complète en haut, page Web sur TOUTE la surface,
-   barre du bas (retour / avant / nouvel onglet / compteur d'onglets) + gestionnaire d'onglets réels */
-type BTab = { id: number; url: string; live: string; title: string };
-const QUICK: [string, string][] = [['Google', 'https://www.google.com'], ['YouTube', 'https://m.youtube.com'], ['Wikipédia', 'https://m.wikipedia.org'], ['X', 'https://x.com']];
-const shortUrl = (u: string) => (u ? u.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') : '');
+/* 23 — Navigateur Internet : barre d'adresse vitrée, WebView réelle, retour/avant/recharger, onglets, favoris */
 export function BrowserScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
-  const ins = useSafeAreaInsets();
-  const start = route.params?.url ?? '';
-  const [tabs, setTabs] = useState<BTab[]>([{ id: 1, url: start, live: start, title: t('browser.newTab') }]);
-  const [activeId, setActiveId] = useState(1);
-  const idRef = useRef(1);
-  const active = tabs.find((x) => x.id === activeId) ?? tabs[0];
-  const [input, setInput] = useState('');
-  const [editing, setEditing] = useState(false);
-  const [prog, setProg] = useState(0);
-  const [canBack, setCanBack] = useState(false);
-  const [canFwd, setCanFwd] = useState(false);
-  const [showTabs, setShowTabs] = useState(false);
-  const web = useRef<WebView>(null);
-  const inputRef = useRef<TextInput>(null);
-  const upd = (id: number, patch: Partial<BTab>) => setTabs((ts) => ts.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-  useEffect(() => { setEditing(false); setProg(0); setCanBack(false); setCanFwd(false); }, [activeId]);
-  const norm = (raw: string): string => {
-    const u = raw.trim();
-    if (!u) return '';
-    if (/^https?:\/\//.test(u)) return u;
-    if (u.includes('.') && !u.includes(' ')) return 'https://' + u;
-    return 'https://www.google.com/search?q=' + encodeURIComponent(u);
-  };
-  const go = () => {
-    const u = norm(input);
-    Keyboard.dismiss(); setEditing(false);
-    if (!u) return;
-    if (u === active.url) { try { web.current?.reload(); } catch { /* non chargé */ } return; }
-    setProg(0.05); upd(activeId, { url: u, live: u });
-  };
-  const newTab = () => { idRef.current += 1; const id = idRef.current; setTabs((ts) => [...ts, { id, url: '', live: '', title: t('browser.newTab') }]); setActiveId(id); setShowTabs(false); };
-  const closeTab = (id: number) => {
-    const n = tabs.filter((x) => x.id !== id);
-    if (!n.length) { nav.goBack(); return; }
-    setTabs(n);
-    if (id === activeId) setActiveId(n[n.length - 1].id);
-  };
-  const addr = editing ? input : shortUrl(active.live || active.url);
+  const [url, setUrl] = useState(route.params?.url ?? 'https://www.google.com'); const [input, setInput] = useState(url); const [prog, setProg] = useState(0);
+  const web = useRef<WebView>(null); const [canBack, setCanBack] = useState(false); const [canFwd, setCanFwd] = useState(false);
+  const go = () => { let u = input.trim(); if (!/^https?:\/\//.test(u)) u = u.includes('.') && !u.includes(' ') ? 'https://' + u : 'https://www.google.com/search?q=' + encodeURIComponent(u); setUrl(u); };
   return (
-    <View style={{ flex: 1, backgroundColor: '#EAF2FE' }}>
-      {/* barre supérieure — retour + barre d'adresse pleine largeur */}
-      <View style={{ paddingTop: ins.top + 6, paddingHorizontal: 10, paddingBottom: 6 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <IconButton icon={ChevronLeft} onPress={() => nav.goBack()} />
-          <View style={[st.browAddr, { flex: 1 }]}>
-            <Lock size={14} color={active.url ? C.green : C.mute} />
-            <TextInput
-              ref={inputRef} value={addr} onChangeText={setInput}
-              onFocus={() => { setEditing(true); setInput(''); }}
-              onEndEditing={() => setEditing(false)}
-              onSubmitEditing={go}
-              placeholder={t('browser.placeholder')} placeholderTextColor={C.mute}
-              autoCapitalize="none" autoCorrect={false} keyboardType="web-search" returnKeyType="go"
-              selectTextOnFocus
-              style={{ flex: 1, fontFamily: F.body, fontSize: 14, color: C.ink, paddingVertical: 0 }} />
-            {editing
-              ? <Press hit={8} onPress={() => { setInput(''); inputRef.current?.focus(); }}><X size={16} color={C.mute} /></Press>
-              : <Press hit={8} onPress={() => { if (active.url) { try { web.current?.reload(); } catch { /* ignore */ } } }}><RotateCw size={16} color={C.mute} /></Press>}
-          </View>
-        </View>
-        {prog > 0 && prog < 1 && <View style={st.browProg}><View style={{ width: `${Math.min(100, prog * 100)}%`, height: '100%', backgroundColor: C.accent }} /></View>}
+    <Screen bg={4}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingTop: 6 }}>
+        <IconButton icon={ChevronLeft} onPress={() => nav.goBack()} />
+        <GlassCard padding={0} radius={R.pill} style={{ flex: 1, height: 42 }}>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 }}><Lock size={14} color={C.green} /><TextInput value={input} onChangeText={setInput} onSubmitEditing={go} onFocus={() => setInput('')} onBlur={() => !input && setInput(url)} autoCapitalize="none" keyboardType="url" returnKeyType="go" placeholder={t('browser.placeholder')} placeholderTextColor={C.mute} style={{ flex: 1, fontFamily: F.body, fontSize: 13, color: C.ink, paddingVertical: 0 }} /><Press onPress={() => web.current?.reload()} hit={6}><RotateCw size={15} color={C.mute} /></Press></View>
+        </GlassCard>
+        <IconButton icon={Plus} onPress={() => { setUrl('https://www.google.com'); setInput(''); }} />
       </View>
-
-      {/* page — occupe toute la surface restante */}
-      <View style={{ flex: 1 }}>
-        {active.url ? (
-          <WebView
-            key={activeId} ref={web} source={{ uri: active.url }}
-            style={{ flex: 1, backgroundColor: 'transparent' }}
-            originWhitelist={['*']} javaScriptEnabled domStorageEnabled allowsInlineMediaPlayback
-            setSupportMultipleWindows={false}
-            onLoadStart={() => setProg(0.05)}
-            onLoadProgress={(e) => setProg(e.nativeEvent.progress)}
-            onLoadEnd={(e) => { setProg(1); const u = e.nativeEvent?.url; if (u && u !== 'about:blank') upd(activeId, { live: u }); }}
-            onNavigationStateChange={(st2) => {
-              setCanBack(st2.canGoBack); setCanFwd(st2.canGoForward);
-              if (st2.title) upd(activeId, { title: st2.title });
-              if (!editing) { setInput(''); upd(activeId, { live: st2.url || active.live }); }
-            }}
-          />
-        ) : (
-          <View style={st.browHome}>
-            <Image source={IMG.logoF} style={{ width: 96, height: 96, borderRadius: 24 }} />
-            <Text style={{ fontFamily: F.title, fontSize: 22, color: C.ink }}>{t('browser.title')}</Text>
-            <View style={{ alignSelf: 'stretch' }}>
-              <Press onPress={() => inputRef.current?.focus()}>
-                <View style={st.browSearch}>
-                  <Globe size={16} color={C.mute} />
-                  <Text style={{ flex: 1, fontFamily: F.body, fontSize: 14, color: C.mute }} numberOfLines={1}>{t('browser.placeholder')}</Text>
-                </View>
-              </Press>
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-              {QUICK.map(([n, u]) => (
-                <Press key={n} onPress={() => { setProg(0.05); upd(activeId, { url: u, live: u }); }}>
-                  <View style={st.browLink}><Globe size={14} color={C.accent} /><Text style={{ fontFamily: F.bodyB, fontSize: 13, color: C.ink }}>{n}</Text></View>
-                </Press>
-              ))}
-            </View>
-          </View>
-        )}
+      {prog > 0 && prog < 1 && <View style={{ height: 3, marginHorizontal: 10, marginTop: 4, borderRadius: 2, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,.4)' }}><View style={{ width: `${prog * 100}%`, height: '100%', backgroundColor: C.accent }} /></View>}
+      <View style={{ flex: 1, margin: 10, marginBottom: 86, borderRadius: R.card, overflow: 'hidden', backgroundColor: '#fff' }}>
+        <WebView ref={web} source={{ uri: url }} style={{ flex: 1 }} onLoadProgress={(e) => setProg(e.nativeEvent.progress)} onNavigationStateChange={(st) => { setCanBack(st.canGoBack); setCanFwd(st.canGoForward); if (st.url) setInput(st.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40)); }} />
       </View>
-
-      {/* barre inférieure — chrome style Chrome */}
-      <View style={{ paddingHorizontal: 12, paddingTop: 4, paddingBottom: Math.max(ins.bottom, 10) }}>
-        <View style={st.browBar}>
-          <Press hit={8} onPress={() => { if (canBack) try { web.current?.goBack(); } catch { /* ignore */ } }}><ChevronLeft size={24} color={canBack ? C.ink : C.mute} /></Press>
-          <Press hit={8} onPress={() => { if (canFwd) try { web.current?.goForward(); } catch { /* ignore */ } }}><ChevronRight size={24} color={canFwd ? C.ink : C.mute} /></Press>
-          <Press hit={8} onPress={newTab}><Plus size={24} color={C.ink} /></Press>
-          <Press hit={8} onPress={() => setShowTabs(true)} style={{ width: 26, height: 26, borderRadius: 7, borderWidth: 2.4, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontFamily: F.bodyX, fontSize: 12, color: C.ink }}>{tabs.length}</Text>
-          </Press>
-        </View>
+      <View style={{ position: 'absolute', left: 14, right: 14, bottom: 24 }}>
+        <GlassCard padding={8} radius={R.nav}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+            <Press onPress={() => canBack && web.current?.goBack()} hit={8}><ChevronLeft size={24} color={canBack ? C.ink : C.mute} /></Press>
+            <Press onPress={() => canFwd && web.current?.goForward()} hit={8}><ChevronRight size={24} color={canFwd ? C.ink : C.mute} /></Press>
+            <Press hit={8}><Bookmark size={22} color={C.ink} /></Press>
+            <Press hit={8}><Download size={22} color={C.ink} /></Press>
+            <Press hit={8}><View style={st.tabsBadge}><Text style={{ fontFamily: F.bodyX, fontSize: 12, color: C.ink }}>1</Text></View></Press>
+          </View>
+        </GlassCard>
       </View>
-
-      {/* gestionnaire d'onglets réels */}
-      <Modal visible={showTabs} animationType="fade" onRequestClose={() => setShowTabs(false)}>
-        <View style={{ flex: 1, backgroundColor: '#0B2A6B' }}>
-          <View style={{ paddingTop: ins.top + 10, paddingHorizontal: 16, paddingBottom: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ color: '#fff', fontFamily: F.title, fontSize: 22 }}>{t('browser.tabs')}</Text>
-            <Press hit={8} onPress={() => setShowTabs(false)}><X size={24} color="#fff" /></Press>
-          </View>
-          <FlatList data={tabs} numColumns={2} keyExtractor={(x) => String(x.id)} columnWrapperStyle={{ gap: 12 }}
-            contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 120 }}
-            renderItem={({ item }) => (
-              <View style={{ flex: 1 }}>
-                <Press onPress={() => { setActiveId(item.id); setShowTabs(false); }}>
-                  <View style={{ height: 176, borderRadius: 16, overflow: 'hidden', backgroundColor: '#fff', borderWidth: item.id === activeId ? 2 : 1, borderColor: item.id === activeId ? C.accent : 'rgba(255,255,255,.25)' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(11,42,107,.1)' }}>
-                      <Lock size={11} color={item.url ? C.green : C.mute} />
-                      <Text numberOfLines={1} style={{ flex: 1, fontFamily: F.body, fontSize: 11, color: C.mute }}>{shortUrl(item.live || item.url) || t('browser.newTab')}</Text>
-                      <Press hit={6} onPress={() => closeTab(item.id)}><X size={14} color={C.mute} /></Press>
-                    </View>
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 }}>
-                      <Image source={IMG.logoF} style={{ width: 34, height: 34, borderRadius: 9 }} />
-                      <Text numberOfLines={2} style={{ fontFamily: F.bodyB, fontSize: 12, color: C.ink, textAlign: 'center' }}>{item.title || t('browser.newTab')}</Text>
-                    </View>
-                  </View>
-                </Press>
-              </View>
-            )} />
-          <View style={{ position: 'absolute', left: 16, right: 16, bottom: Math.max(ins.bottom, 14), flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1 }}>
-              <Press onPress={newTab} style={{ height: 50, borderRadius: 25, backgroundColor: C.accent, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <Plus size={20} color="#fff" /><Text style={{ fontFamily: F.bodyB, fontSize: 15, color: '#fff' }}>{t('browser.newTab')}</Text>
-              </Press>
-            </View>
-            <Press onPress={() => { setTabs((ts) => ts.filter((x) => x.id === activeId)); setShowTabs(false); }} style={{ height: 50, paddingHorizontal: 20, borderRadius: 25, backgroundColor: 'rgba(255,255,255,.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,.35)', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: F.bodyB, fontSize: 15, color: '#fff' }}>{t('common.close')}</Text>
-            </Press>
-          </View>
-        </View>
-      </Modal>
-    </View>
+    </Screen>
   );
 }
 export { Globe, Dimensions };
@@ -656,15 +359,10 @@ const st = StyleSheet.create({
   folderIco: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   chk: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: C.mute },
   vidBadge: { position: 'absolute', left: 6, bottom: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,.45)', borderRadius: 8, paddingHorizontal: 5, paddingVertical: 2 },
-  viewerTop: { position: 'absolute', top: 48, left: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4, paddingHorizontal: 4, borderRadius: 24, backgroundColor: 'rgba(0,0,0,.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,.16)' },
+  viewerTop: { position: 'absolute', top: 48, left: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
   viewerBar: { position: 'absolute', bottom: 34, left: 24, right: 24, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,.25)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
   track: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,.35)', overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 3, backgroundColor: C.glow },
   playBig: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', paddingLeft: 2 },
-  browAddr: { flexDirection: 'row', alignItems: 'center', height: 44, borderRadius: 22, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(11,42,107,.14)', paddingHorizontal: 14, gap: 8 },
-  browProg: { height: 3, borderRadius: 2, overflow: 'hidden', backgroundColor: 'rgba(11,42,107,.12)', marginTop: 6 },
-  browHome: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', paddingHorizontal: 26, gap: 16 },
-  browSearch: { height: 46, borderRadius: 23, backgroundColor: '#F1F6FF', borderWidth: 1, borderColor: 'rgba(11,42,107,.14)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 8 },
-  browLink: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 14, backgroundColor: '#F1F6FF', borderWidth: 1, borderColor: 'rgba(11,42,107,.1)', flexDirection: 'row', alignItems: 'center', gap: 8 },
-  browBar: { height: 56, borderRadius: R.nav, backgroundColor: 'rgba(255,255,255,.75)', borderWidth: 1, borderColor: 'rgba(11,42,107,.14)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
+  tabsBadge: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' },
 });
