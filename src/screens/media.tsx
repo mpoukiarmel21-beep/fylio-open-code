@@ -1,6 +1,7 @@
 /** 16 Fichiers, 17 Dossier, 18 Galerie, 19 Visionneuse façon Photos, 20 Vidéo, 21 Musique (+ widget lock-screen), 22 Lecteur plein écran, PDF, 23 Navigateur. */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, Animated, FlatList, Dimensions, TextInput, Modal } from 'react-native';
+import { View, Text, Image, ScrollView, StyleSheet, Animated, FlatList, Dimensions, TextInput, Modal, Pressable, ActivityIndicator, Keyboard } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -9,8 +10,8 @@ import { WebView } from 'react-native-webview';
 import Pdf from 'react-native-pdf';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { Folder, Image as ImgIco, Video, Music, FileText, Download, Inbox, Play, Pause, SkipBack, SkipForward, Heart, Share2, Trash2, Info, X, ChevronLeft, ChevronRight, Globe, Lock, RotateCw, Plus, Bookmark, Volume2, Repeat, Shuffle, Send, ShieldCheck, FolderPlus } from 'lucide-react-native';
-import { Screen, Header, HeaderBack, GlassCard, GlassButton, GhostButton, Press, Search, Chip, T, SectionTitle, FadeIn, W, H, Row, IconButton } from '../ui';
+import { Folder, Image as ImgIco, Video, Music, FileText, Download, Inbox, Play, Pause, SkipBack, SkipForward, Heart, Share2, Trash2, Info, X, ChevronLeft, ChevronRight, Globe, Lock, RotateCw, Plus, Bookmark, Volume2, VolumeX, Repeat, Shuffle, Send, ShieldCheck, FolderPlus } from 'lucide-react-native';
+import { Screen, Header, HeaderBack, GlassCard, GlassButton, GhostButton, Press, Search, Chip, T, SectionTitle, FadeIn, W, H, Row, IconButton, useScrollHide } from '../ui';
 import { NAV_H } from '../ui/GlassNav';
 import { C, F, R, S } from '../theme';
 import { IMG } from '../assets';
@@ -40,14 +41,15 @@ export function FilesScreen() {
   ] as const;
   const granted = lib.perm === 'granted';
   const total = folders.reduce((a, f) => a + f.n, 0);
+  const hs = useScrollHide();
   const doImport = async () => { setImporting(true); try { await lib.importDocs(); } finally { setImporting(false); } };
   return (
     <Screen bg={4}>
-      <Header {...hp} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: S.padTight + 4, paddingBottom: NAV_H + 40 }}>
-        <FadeIn style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+      <Animated.View style={hs.wrap}><Header {...hp} /></Animated.View>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: S.padTight + 4, paddingBottom: NAV_H + 40 }} onScroll={hs.onScroll} scrollEventThrottle={16}>
+        <FadeIn style={{ flexDirection: 'row', alignItems: 'flex-end', marginTop: 8 }}>
           <View style={{ flex: 1 }}><Text style={T.h1()}>{t('files.title')}</Text><Text style={T.lead()}>{t('files.subtitle')}</Text></View>
-          <Image source={IMG.filesMascot} style={{ width: 110, height: 110 }} resizeMode="contain" />
+          <Image source={IMG.filesMascot} style={{ width: 130, height: 130, flexShrink: 0, marginBottom: 2, marginRight: 4 }} resizeMode="contain" />
         </FadeIn>
         <Search placeholder={t('files.search')} value={q} onChange={setQ} style={{ marginTop: 6 }} />
         {!granted && (
@@ -132,6 +134,7 @@ export function GalleryScreen() {
   const cell = (W - 16 - 6 * 2) / 3;
   const now = Date.now();
   const dayMs = 864e5;
+  const hs = useScrollHide();
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
   const groups = [
     { k: 'today', list: items.filter((f) => f.date >= startOfToday.getTime()) },
@@ -140,11 +143,11 @@ export function GalleryScreen() {
   ];
   return (
     <Screen bg={4}>
-      <Header {...hp} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: NAV_H + 40 }}>
-        <FadeIn style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+      <Animated.View style={hs.wrap}><Header {...hp} /></Animated.View>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: NAV_H + 40 }} onScroll={hs.onScroll} scrollEventThrottle={16}>
+        <FadeIn style={{ flexDirection: 'row', alignItems: 'flex-end', marginTop: 8 }}>
           <View style={{ flex: 1 }}><Text style={T.h1()}>{t('gallery.title')}</Text><Text style={T.lead()}>{items.length} {t('gallery.photos').toLowerCase()} & {t('gallery.videos').toLowerCase()}</Text></View>
-          <Image source={IMG.galleryMascot} style={{ width: 120, height: 125 }} resizeMode="contain" />
+          <Image source={IMG.galleryMascot} style={{ width: 150, height: 146, flexShrink: 0, marginBottom: 2, marginRight: 4 }} resizeMode="contain" />
         </FadeIn>
         <Search placeholder={t('gallery.search')} value={q} onChange={setQ} />
         <View style={{ flexDirection: 'row', gap: 8, marginVertical: 10 }}>{(['all', 'photos', 'videos'] as const).map((k) => <Chip key={k} label={t(`gallery.${k}`)} active={filter === k} onPress={() => setFilter(k)} />)}</View>
@@ -179,7 +182,7 @@ export function ViewerScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       <FlatList data={items} horizontal pagingEnabled initialScrollIndex={i} getItemLayout={(_, k) => ({ length: W, offset: W * k, index: k })} keyExtractor={(f) => f.id} onMomentumScrollEnd={(e) => setI(Math.round(e.nativeEvent.contentOffset.x / W))} showsHorizontalScrollIndicator={false}
-        renderItem={({ item, index: k }) => <Press onPress={() => setUi(!ui)} scale={1}><View style={{ width: W, height: H, alignItems: 'center', justifyContent: 'center' }}><LinearGradient colors={[`hsl(${200 + (k * 17) % 50}, 85%, 70%)`, `hsl(${215 + (k * 11) % 40}, 80%, 45%)`]} style={{ width: W, height: W * 1.25, borderRadius: 4 }} /><PhImage uri={item.uri} direct style={{ width: W, height: W * 1.25, borderRadius: 4 } as any} contentFit="contain" /></View></Press>} />
+        renderItem={({ item }) => <Press onPress={() => setUi(!ui)} scale={1}><View style={{ width: W, height: H, paddingTop: 104, paddingBottom: 116, backgroundColor: '#000' }}><PhImage uri={item.uri} direct style={{ width: '100%', height: '100%' } as any} contentFit="contain" /></View></Press>} />
       <Animated.View style={[st.viewerTop, { opacity: op }]} pointerEvents={ui ? 'auto' : 'none'}>
         <IconButton icon={ChevronLeft} deep onPress={() => nav.goBack()} />
         <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: '#fff', fontFamily: F.bodyB }}>{items[i]?.name}</Text><Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 12 }}>{[`${i + 1} / ${items.length}`, fmtFileSub(items[i])].filter(Boolean).join(' • ')}</Text></View>
@@ -191,57 +194,75 @@ export function ViewerScreen() {
     </View>
   );
 }
-/* 20 — Lecteur vidéo (expo-video réel ; commandes vitrées) */
+/* 20 — Lecteur vidéo : expo-video réel (autoplay après chargement, barre cliquable, mute, états loading/erreur) */
 export function VideoScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
   const { item } = route.params as { item: FileItem };
-  const player = useVideoPlayer(null, (p) => { p.loop = false; });
-  const [src, setSrc] = useState<string | null>(null);
-  const [state, setState] = useState({ pos: 0, dur: item.duration ?? 0, playing: false, err: false });
+  const player = useVideoPlayer(null, (p) => { p.loop = false; p.timeUpdateEventInterval = 0.5; });
+  const [state, setState] = useState({ pos: 0, dur: item.duration ?? 0, playing: false, loading: true, err: false });
+  const [muted, setMuted] = useState(false);
+  const [trackW, setTrackW] = useState(1);
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
   useEffect(() => {
     let alive = true;
-    resolveMediaUri(item.uri).then((u) => {
-      if (!alive) return;
-      if (!u) { setState((s) => ({ ...s, err: true })); return; }
-      setSrc(u);
-      player.replaceAsync(u).catch(() => setState((s) => ({ ...s, err: true })));
-    }).catch(() => setState((s) => ({ ...s, err: true })));
+    setState((s) => ({ ...s, loading: true, err: false }));
+    resolveMediaUri(item.uri)
+      .then((u) => { if (!alive) return; if (!u) throw new Error('uri'); return player.replaceAsync(u).then(() => { if (alive) player.play(); }); })
+      .catch(() => { if (alive) setState((s) => ({ ...s, err: true, loading: false })); });
     return () => { alive = false; };
   }, [item.uri]);
   useEffect(() => {
-    const iv = setInterval(() => {
-      setState((s) => {
-        const pos = player.currentTime ?? 0;
-        const dur = player.duration || s.dur;
-        if (player.status === 'error') return { ...s, err: true };
-        if (dur > 0 && pos >= dur - 0.4 && player.playing) return { ...s, pos: 0, dur, playing: false };
-        return { ...s, pos, dur, playing: player.playing };
-      });
-    }, 500);
-    return () => clearInterval(iv);
+    const subs: any[] = [];
+    try {
+      subs.push(player.addListener('timeUpdate', (e: any) => {
+        setState((s) => ({ ...s, pos: e.currentTime ?? 0, dur: player.duration || s.dur, playing: player.playing }));
+      }));
+      subs.push(player.addListener('statusChange', (e: any) => {
+        const stt: string = e?.status ?? player.status;
+        setState((s) => ({ ...s, err: stt === 'error', loading: stt === 'loading', dur: player.duration || s.dur, playing: player.playing }));
+      }));
+      subs.push(player.addListener('playToEnd', () => setState((s) => ({ ...s, pos: 0, playing: false }))));
+    } catch { /* listeners indisponibles : l'état reste piloté par la lecture directe */ }
+    return () => subs.forEach((x) => { try { x?.remove?.(); } catch { /* déjà relâché */ } });
   }, []);
-  const seek = (delta: number) => { const v = Math.max(0, Math.min(state.dur || item.duration || 0, state.pos + delta)); player.currentTime = v; setState((s) => ({ ...s, pos: v })); };
+  const seekTo = (v: number) => { const d = stateRef.current.dur || player.duration || 0; const nv = Math.max(0, Math.min(d || 1e9, v)); player.currentTime = nv; setState((s) => ({ ...s, pos: nv })); };
+  const seek = (delta: number) => seekTo(stateRef.current.pos + delta);
+  const toggle = () => { if (state.playing) player.pause(); else player.play(); };
+  const toggleMute = () => { const m = !muted; try { player.muted = m; } catch { /* iOS: réglage non dispo */ } setMuted(m); };
   const dur = state.dur || item.duration || 1;
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
-      <View style={{ flex: 1, justifyContent: 'center' }}>
-        {src && !state.err ? (
-          <VideoView player={player} style={{ width: W, height: W * 0.56 }} contentFit="contain" nativeControls={false} allowsPictureInPicture />
-        ) : (
-          <LinearGradient colors={['#2E90FA', '#0B52DE']} style={{ width: W, height: W * 0.56, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: 'rgba(255,255,255,.9)', fontFamily: F.bodyB, fontSize: 13, paddingHorizontal: 20, textAlign: 'center' }}>{state.err ? t('lib.mediaErr') : item.name}</Text>
-          </LinearGradient>
+      <View style={{ flex: 1 }}>
+        {!state.err && <VideoView player={player} style={{ width: '100%', height: '100%' }} contentFit="contain" nativeControls={false} allowsPictureInPicture />}
+        {state.err && (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 30 }}>
+            <Video size={42} color="rgba(255,255,255,.55)" />
+            <Text style={{ color: 'rgba(255,255,255,.85)', fontFamily: F.bodyB, fontSize: 13, textAlign: 'center' }}>{t('lib.mediaErr')}</Text>
+            <Text style={{ color: 'rgba(255,255,255,.55)', fontFamily: F.body, fontSize: 12, textAlign: 'center' }} numberOfLines={2}>{item.name}</Text>
+          </View>
+        )}
+        {state.loading && !state.err && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator size="large" color="#fff" />
+          </View>
         )}
       </View>
-      <View style={st.viewerTop}><IconButton icon={ChevronLeft} deep onPress={() => nav.goBack()} /><Text style={{ flex: 1, textAlign: 'center', color: '#fff', fontFamily: F.bodyB }}>{item.name}</Text><View style={{ width: 40 }} /></View>
+      <View style={st.viewerTop}><IconButton icon={ChevronLeft} deep onPress={() => nav.goBack()} /><Text style={{ flex: 1, textAlign: 'center', color: '#fff', fontFamily: F.bodyB }} numberOfLines={1}>{item.name}</Text><View style={{ width: 40 }} /></View>
       <View style={{ position: 'absolute', left: 14, right: 14, bottom: 40 }}>
         <GlassCard deep padding={14}>
-          <View style={st.track}><View style={[st.fill, { width: `${Math.min(100, (state.pos / dur) * 100)}%` }]} /></View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}><Text style={T.body(true)}>{fmtDur(state.pos)}</Text><Text style={T.body(true)}>{fmtDur(dur)}</Text></View>
-          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 26, marginTop: 8 }}>
+          <Pressable onPress={(e) => seekTo((e.nativeEvent.locationX / Math.max(1, trackW)) * dur)} style={{ paddingVertical: 6 }}>
+            <View onLayout={(e) => setTrackW(e.nativeEvent.layout.width)} style={st.track}>
+              <View style={[st.fill, { width: `${Math.min(100, (state.pos / dur) * 100)}%` }]} />
+            </View>
+          </Pressable>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}><Text style={T.body(true)}>{fmtDur(state.pos)}</Text><Text style={T.body(true)}>{fmtDur(dur)}</Text></View>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 24, marginTop: 8 }}>
+            <Press onPress={toggleMute} hit={8}>{muted ? <VolumeX size={20} color={muted ? '#FF7AA2' : 'rgba(255,255,255,.8)'} /> : <Volume2 size={20} color="rgba(255,255,255,.85)" />}</Press>
             <Press onPress={() => seek(-10)}><SkipBack size={26} color="#fff" /></Press>
-            <Press onPress={() => (state.playing ? player.pause() : player.play())}><View style={st.playBig}>{state.playing ? <Pause size={26} color={C.ink} fill={C.ink} /> : <Play size={26} color={C.ink} fill={C.ink} />}</View></Press>
+            <Press onPress={toggle}><View style={st.playBig}>{state.playing ? <Pause size={26} color={C.ink} fill={C.ink} /> : <Play size={26} color={C.ink} fill={C.ink} />}</View></Press>
             <Press onPress={() => seek(10)}><SkipForward size={26} color="#fff" /></Press>
+            <View style={{ width: 20 }} />
           </View>
         </GlassCard>
       </View>
@@ -318,22 +339,28 @@ export function MusicScreen() {
   const nav = useNavigation<Nav>(); const { t } = useTranslation(); const hp = useHeaderProps(); const pl = usePlayer();
   const lib = useLibrary();
   const [q, setQ] = useState(''); const [widget, setWidget] = useState(false);
+  const hs = useScrollHide();
   useEffect(() => { lib.ensure(); }, []);
   const list = lib.songs.filter((s) => s.title.toLowerCase().includes(q.toLowerCase()));
   const recent = list.slice(0, 4);
   const songSub = (s: Song) => [s.artist, s.duration > 0 ? fmtDur(s.duration) : ''].filter(Boolean).join(' • ');
   return (
     <Screen bg={1}>
-      <Header {...hp} deep />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: NAV_H + 110 }}>
-        <FadeIn style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+      <Animated.View style={hs.wrap}><Header {...hp} deep /></Animated.View>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: NAV_H + 110 }} onScroll={hs.onScroll} scrollEventThrottle={16}>
+        <FadeIn style={{ flexDirection: 'row', alignItems: 'flex-end', marginTop: 8 }}>
           <View style={{ flex: 1 }}><Text style={T.h1(true)}>{t('music.title')}</Text><Text style={T.lead(true)}>{t('music.count', { count: lib.songs.length })}</Text></View>
-          <Image source={IMG.musicMascot} style={{ width: 115, height: 120 }} resizeMode="contain" />
+          <Image source={IMG.musicMascot} style={{ width: 146, height: 150, flexShrink: 0, marginBottom: 2, marginRight: 4 }} resizeMode="contain" />
         </FadeIn>
         <Search deep placeholder={t('music.search')} value={q} onChange={setQ} style={{ marginTop: 4 }} />
         {!lib.songs.length && (
           <GlassCard deep style={{ marginTop: 12 }}>
-            <Text style={[T.body(true), { textAlign: 'center', paddingVertical: 8 }]}>{lib.perm === 'granted' ? t('lib.empty') : t('lib.grantSub')}</Text>
+            <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+              <Text style={[T.body(true), { textAlign: 'center' }]}>{lib.perm === 'granted' ? t('lib.empty') : t('lib.grantSub')}</Text>
+              <View style={{ marginTop: 12, alignSelf: 'stretch' }}>
+                <GhostButton deep small label={lib.perm === 'granted' ? t('lib.import') : t('lib.grantBtn')} icon={lib.perm === 'granted' ? Plus : undefined} onPress={() => { if (lib.perm === 'granted') { lib.importDocs(); } else { lib.ask(); } }} />
+              </View>
+            </View>
           </GlassCard>
         )}
         {!!recent.length && (
@@ -441,37 +468,165 @@ function LockWidgetPreview({ onClose }: { onClose: () => void }) {
   );
 }
 
-/* 23 — Navigateur Internet : barre d'adresse vitrée, WebView réelle, retour/avant/recharger, onglets, favoris */
+/* 23 — Navigateur plein écran façon Chrome : barre d'adresse complète en haut, page Web sur TOUTE la surface,
+   barre du bas (retour / avant / nouvel onglet / compteur d'onglets) + gestionnaire d'onglets réels */
+type BTab = { id: number; url: string; live: string; title: string };
+const QUICK: [string, string][] = [['Google', 'https://www.google.com'], ['YouTube', 'https://m.youtube.com'], ['Wikipédia', 'https://m.wikipedia.org'], ['X', 'https://x.com']];
+const shortUrl = (u: string) => (u ? u.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') : '');
 export function BrowserScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
-  const [url, setUrl] = useState(route.params?.url ?? 'https://www.google.com'); const [input, setInput] = useState(url); const [prog, setProg] = useState(0);
-  const web = useRef<WebView>(null); const [canBack, setCanBack] = useState(false); const [canFwd, setCanFwd] = useState(false);
-  const go = () => { let u = input.trim(); if (!/^https?:\/\//.test(u)) u = u.includes('.') && !u.includes(' ') ? 'https://' + u : 'https://www.google.com/search?q=' + encodeURIComponent(u); setUrl(u); };
+  const ins = useSafeAreaInsets();
+  const start = route.params?.url ?? '';
+  const [tabs, setTabs] = useState<BTab[]>([{ id: 1, url: start, live: start, title: t('browser.newTab') }]);
+  const [activeId, setActiveId] = useState(1);
+  const idRef = useRef(1);
+  const active = tabs.find((x) => x.id === activeId) ?? tabs[0];
+  const [input, setInput] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [prog, setProg] = useState(0);
+  const [canBack, setCanBack] = useState(false);
+  const [canFwd, setCanFwd] = useState(false);
+  const [showTabs, setShowTabs] = useState(false);
+  const web = useRef<WebView>(null);
+  const inputRef = useRef<TextInput>(null);
+  const upd = (id: number, patch: Partial<BTab>) => setTabs((ts) => ts.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  useEffect(() => { setEditing(false); setProg(0); setCanBack(false); setCanFwd(false); }, [activeId]);
+  const norm = (raw: string): string => {
+    const u = raw.trim();
+    if (!u) return '';
+    if (/^https?:\/\//.test(u)) return u;
+    if (u.includes('.') && !u.includes(' ')) return 'https://' + u;
+    return 'https://www.google.com/search?q=' + encodeURIComponent(u);
+  };
+  const go = () => {
+    const u = norm(input);
+    Keyboard.dismiss(); setEditing(false);
+    if (!u) return;
+    if (u === active.url) { try { web.current?.reload(); } catch { /* non chargé */ } return; }
+    setProg(0.05); upd(activeId, { url: u, live: u });
+  };
+  const newTab = () => { idRef.current += 1; const id = idRef.current; setTabs((ts) => [...ts, { id, url: '', live: '', title: t('browser.newTab') }]); setActiveId(id); setShowTabs(false); };
+  const closeTab = (id: number) => {
+    const n = tabs.filter((x) => x.id !== id);
+    if (!n.length) { nav.goBack(); return; }
+    setTabs(n);
+    if (id === activeId) setActiveId(n[n.length - 1].id);
+  };
+  const addr = editing ? input : shortUrl(active.live || active.url);
   return (
-    <Screen bg={4}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingTop: 6 }}>
-        <IconButton icon={ChevronLeft} onPress={() => nav.goBack()} />
-        <GlassCard padding={0} radius={R.pill} style={{ flex: 1, height: 42 }}>
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 }}><Lock size={14} color={C.green} /><TextInput value={input} onChangeText={setInput} onSubmitEditing={go} onFocus={() => setInput('')} onBlur={() => !input && setInput(url)} autoCapitalize="none" keyboardType="url" returnKeyType="go" placeholder={t('browser.placeholder')} placeholderTextColor={C.mute} style={{ flex: 1, fontFamily: F.body, fontSize: 13, color: C.ink, paddingVertical: 0 }} /><Press onPress={() => web.current?.reload()} hit={6}><RotateCw size={15} color={C.mute} /></Press></View>
-        </GlassCard>
-        <IconButton icon={Plus} onPress={() => { setUrl('https://www.google.com'); setInput(''); }} />
-      </View>
-      {prog > 0 && prog < 1 && <View style={{ height: 3, marginHorizontal: 10, marginTop: 4, borderRadius: 2, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,.4)' }}><View style={{ width: `${prog * 100}%`, height: '100%', backgroundColor: C.accent }} /></View>}
-      <View style={{ flex: 1, margin: 10, marginBottom: 86, borderRadius: R.card, overflow: 'hidden', backgroundColor: '#fff' }}>
-        <WebView ref={web} source={{ uri: url }} style={{ flex: 1 }} onLoadProgress={(e) => setProg(e.nativeEvent.progress)} onNavigationStateChange={(st) => { setCanBack(st.canGoBack); setCanFwd(st.canGoForward); if (st.url) setInput(st.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40)); }} />
-      </View>
-      <View style={{ position: 'absolute', left: 14, right: 14, bottom: 24 }}>
-        <GlassCard padding={8} radius={R.nav}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
-            <Press onPress={() => canBack && web.current?.goBack()} hit={8}><ChevronLeft size={24} color={canBack ? C.ink : C.mute} /></Press>
-            <Press onPress={() => canFwd && web.current?.goForward()} hit={8}><ChevronRight size={24} color={canFwd ? C.ink : C.mute} /></Press>
-            <Press hit={8}><Bookmark size={22} color={C.ink} /></Press>
-            <Press hit={8}><Download size={22} color={C.ink} /></Press>
-            <Press hit={8}><View style={st.tabsBadge}><Text style={{ fontFamily: F.bodyX, fontSize: 12, color: C.ink }}>1</Text></View></Press>
+    <View style={{ flex: 1, backgroundColor: '#EAF2FE' }}>
+      {/* barre supérieure — retour + barre d'adresse pleine largeur */}
+      <View style={{ paddingTop: ins.top + 6, paddingHorizontal: 10, paddingBottom: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <IconButton icon={ChevronLeft} onPress={() => nav.goBack()} />
+          <View style={[st.browAddr, { flex: 1 }]}>
+            <Lock size={14} color={active.url ? C.green : C.mute} />
+            <TextInput
+              ref={inputRef} value={addr} onChangeText={setInput}
+              onFocus={() => { setEditing(true); setInput(''); }}
+              onEndEditing={() => setEditing(false)}
+              onSubmitEditing={go}
+              placeholder={t('browser.placeholder')} placeholderTextColor={C.mute}
+              autoCapitalize="none" autoCorrect={false} keyboardType="web-search" returnKeyType="go"
+              selectTextOnFocus
+              style={{ flex: 1, fontFamily: F.body, fontSize: 14, color: C.ink, paddingVertical: 0 }} />
+            {editing
+              ? <Press hit={8} onPress={() => { setInput(''); inputRef.current?.focus(); }}><X size={16} color={C.mute} /></Press>
+              : <Press hit={8} onPress={() => { if (active.url) { try { web.current?.reload(); } catch { /* ignore */ } } }}><RotateCw size={16} color={C.mute} /></Press>}
           </View>
-        </GlassCard>
+        </View>
+        {prog > 0 && prog < 1 && <View style={st.browProg}><View style={{ width: `${Math.min(100, prog * 100)}%`, height: '100%', backgroundColor: C.accent }} /></View>}
       </View>
-    </Screen>
+
+      {/* page — occupe toute la surface restante */}
+      <View style={{ flex: 1 }}>
+        {active.url ? (
+          <WebView
+            key={activeId} ref={web} source={{ uri: active.url }}
+            style={{ flex: 1, backgroundColor: 'transparent' }}
+            originWhitelist={['*']} javaScriptEnabled domStorageEnabled allowsInlineMediaPlayback
+            setSupportMultipleWindows={false}
+            onLoadStart={() => setProg(0.05)}
+            onLoadProgress={(e) => setProg(e.nativeEvent.progress)}
+            onLoadEnd={(e) => { setProg(1); const u = e.nativeEvent?.url; if (u && u !== 'about:blank') upd(activeId, { live: u }); }}
+            onNavigationStateChange={(st2) => {
+              setCanBack(st2.canGoBack); setCanFwd(st2.canGoForward);
+              if (st2.title) upd(activeId, { title: st2.title });
+              if (!editing) { setInput(''); upd(activeId, { live: st2.url || active.live }); }
+            }}
+          />
+        ) : (
+          <View style={st.browHome}>
+            <Image source={IMG.logoF} style={{ width: 96, height: 96, borderRadius: 24 }} />
+            <Text style={{ fontFamily: F.title, fontSize: 22, color: C.ink }}>{t('browser.title')}</Text>
+            <Press onPress={() => inputRef.current?.focus()} style={{ alignSelf: 'stretch' }}>
+              <View style={st.browSearch}>
+                <Globe size={16} color={C.mute} />
+                <Text style={{ flex: 1, fontFamily: F.body, fontSize: 14, color: C.mute }} numberOfLines={1}>{t('browser.placeholder')}</Text>
+              </View>
+            </Press>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+              {QUICK.map(([n, u]) => (
+                <Press key={n} onPress={() => { setProg(0.05); upd(activeId, { url: u, live: u }); }}>
+                  <View style={st.browLink}><Globe size={14} color={C.accent} /><Text style={{ fontFamily: F.bodyB, fontSize: 13, color: C.ink }}>{n}</Text></View>
+                </Press>
+              ))}
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* barre inférieure — chrome style Chrome */}
+      <View style={{ paddingHorizontal: 12, paddingTop: 4, paddingBottom: Math.max(ins.bottom, 10) }}>
+        <View style={st.browBar}>
+          <Press hit={8} onPress={() => { if (canBack) try { web.current?.goBack(); } catch { /* ignore */ } }}><ChevronLeft size={24} color={canBack ? C.ink : C.mute} /></Press>
+          <Press hit={8} onPress={() => { if (canFwd) try { web.current?.goForward(); } catch { /* ignore */ } }}><ChevronRight size={24} color={canFwd ? C.ink : C.mute} /></Press>
+          <Press hit={8} onPress={newTab}><Plus size={24} color={C.ink} /></Press>
+          <Press hit={8} onPress={() => setShowTabs(true)} style={{ width: 26, height: 26, borderRadius: 7, borderWidth: 2.4, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontFamily: F.bodyX, fontSize: 12, color: C.ink }}>{tabs.length}</Text>
+          </Press>
+        </View>
+      </View>
+
+      {/* gestionnaire d'onglets réels */}
+      <Modal visible={showTabs} animationType="fade" onRequestClose={() => setShowTabs(false)}>
+        <View style={{ flex: 1, backgroundColor: '#0B2A6B' }}>
+          <View style={{ paddingTop: ins.top + 10, paddingHorizontal: 16, paddingBottom: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ color: '#fff', fontFamily: F.title, fontSize: 22 }}>{t('browser.tabs')}</Text>
+            <Press hit={8} onPress={() => setShowTabs(false)}><X size={24} color="#fff" /></Press>
+          </View>
+          <FlatList data={tabs} numColumns={2} keyExtractor={(x) => String(x.id)} columnWrapperStyle={{ gap: 12 }}
+            contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 120 }}
+            renderItem={({ item }) => (
+              <Press style={{ flex: 1 }} onPress={() => { setActiveId(item.id); setShowTabs(false); }}>
+                <View style={{ height: 176, borderRadius: 16, overflow: 'hidden', backgroundColor: '#fff', borderWidth: item.id === activeId ? 2 : 1, borderColor: item.id === activeId ? C.accent : 'rgba(255,255,255,.25)' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(11,42,107,.1)' }}>
+                    <Lock size={11} color={item.url ? C.green : C.mute} />
+                    <Text numberOfLines={1} style={{ flex: 1, fontFamily: F.body, fontSize: 11, color: C.mute }}>{shortUrl(item.live || item.url) || t('browser.newTab')}</Text>
+                    <Press hit={6} onPress={() => closeTab(item.id)}><X size={14} color={C.mute} /></Press>
+                  </View>
+                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 }}>
+                    <Image source={IMG.logoF} style={{ width: 34, height: 34, borderRadius: 9 }} />
+                    <Text numberOfLines={2} style={{ fontFamily: F.bodyB, fontSize: 12, color: C.ink, textAlign: 'center' }}>{item.title || t('browser.newTab')}</Text>
+                  </View>
+                </View>
+              </Press>
+            )} />
+          <View style={{ position: 'absolute', left: 16, right: 16, bottom: Math.max(ins.bottom, 14), flexDirection: 'row', gap: 10 }}>
+            <Press onPress={newTab} style={{ flex: 1 }}>
+              <View style={{ height: 48, borderRadius: 24, backgroundColor: C.accent, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <Plus size={18} color="#fff" /><Text style={{ fontFamily: F.bodyB, fontSize: 14, color: '#fff' }}>{t('browser.newTab')}</Text>
+              </View>
+            </Press>
+            <Press onPress={() => { setTabs((ts) => ts.filter((x) => x.id === activeId)); setShowTabs(false); }}>
+              <View style={{ height: 48, paddingHorizontal: 18, borderRadius: 24, backgroundColor: 'rgba(255,255,255,.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,.35)', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontFamily: F.bodyB, fontSize: 14, color: '#fff' }}>{t('common.close')}</Text>
+              </View>
+            </Press>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 export { Globe, Dimensions };
@@ -479,10 +634,15 @@ const st = StyleSheet.create({
   folderIco: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   chk: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: C.mute },
   vidBadge: { position: 'absolute', left: 6, bottom: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,.45)', borderRadius: 8, paddingHorizontal: 5, paddingVertical: 2 },
-  viewerTop: { position: 'absolute', top: 48, left: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  viewerTop: { position: 'absolute', top: 48, left: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4, paddingHorizontal: 4, borderRadius: 24, backgroundColor: 'rgba(0,0,0,.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,.16)' },
   viewerBar: { position: 'absolute', bottom: 34, left: 24, right: 24, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,.25)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
   track: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,.35)', overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 3, backgroundColor: C.glow },
   playBig: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', paddingLeft: 2 },
-  tabsBadge: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' },
+  browAddr: { flexDirection: 'row', alignItems: 'center', height: 44, borderRadius: 22, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(11,42,107,.14)', paddingHorizontal: 14, gap: 8 },
+  browProg: { height: 3, borderRadius: 2, overflow: 'hidden', backgroundColor: 'rgba(11,42,107,.12)', marginTop: 6 },
+  browHome: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', paddingHorizontal: 26, gap: 16 },
+  browSearch: { height: 46, borderRadius: 23, backgroundColor: '#F1F6FF', borderWidth: 1, borderColor: 'rgba(11,42,107,.14)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 8 },
+  browLink: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 14, backgroundColor: '#F1F6FF', borderWidth: 1, borderColor: 'rgba(11,42,107,.1)', flexDirection: 'row', alignItems: 'center', gap: 8 },
+  browBar: { height: 56, borderRadius: R.nav, backgroundColor: 'rgba(255,255,255,.75)', borderWidth: 1, borderColor: 'rgba(11,42,107,.14)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
 });

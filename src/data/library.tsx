@@ -167,16 +167,17 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       loadedPermRef.current = permRef.current;
       let media: { im: FileItem[]; vi: FileItem[]; au: FileItem[] } = { im: [], vi: [], au: [] };
       if (p.status === 'granted') {
-        try {
-          const [im, vi, au] = await Promise.all([
-            new Query().eq(AssetField.MEDIA_TYPE, MediaType.IMAGE).orderBy({ key: AssetField.CREATION_TIME, ascending: false }).limit(IMG_MAX).exeForMetadata(),
-            new Query().eq(AssetField.MEDIA_TYPE, MediaType.VIDEO).orderBy({ key: AssetField.CREATION_TIME, ascending: false }).limit(VID_MAX).exeForMetadata(),
-            new Query().eq(AssetField.MEDIA_TYPE, MediaType.AUDIO).orderBy({ key: AssetField.CREATION_TIME, ascending: false }).limit(AUD_MAX).exeForMetadata(),
-          ]);
-          media = { im: im.map(toFile), vi: vi.map(toFile), au: au.map(toFile) };
-        } catch {
-          media = { im: [], vi: [], au: [] };
-        }
+        // Chaque type est récupéré indépendamment : si AUDIO échoue (ou est absent),
+        // les images et les vidéos doivent quand même s'afficher.
+        const grab = async (build: () => Promise<any[]>): Promise<FileItem[]> => {
+          try { return (await build()).map(toFile); } catch { return []; }
+        };
+        const [im, vi, au] = await Promise.all([
+          grab(() => new Query().eq(AssetField.MEDIA_TYPE, MediaType.IMAGE).orderBy({ key: AssetField.CREATION_TIME, ascending: false }).limit(IMG_MAX).exeForMetadata()),
+          grab(() => new Query().eq(AssetField.MEDIA_TYPE, MediaType.VIDEO).orderBy({ key: AssetField.CREATION_TIME, ascending: false }).limit(VID_MAX).exeForMetadata()),
+          grab(() => new Query().eq(AssetField.MEDIA_TYPE, MediaType.AUDIO).orderBy({ key: AssetField.CREATION_TIME, ascending: false }).limit(AUD_MAX).exeForMetadata()),
+        ]);
+        media = { im, vi, au };
       }
       const sbDocs = scanDir('Docs');
       const sbDl = scanDir('Downloads');
