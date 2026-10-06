@@ -145,6 +145,24 @@ export function useScrollHide() {
   return { onScroll, wrap };
 }
 
+/* ---------- En-tête natif iOS : barre épinglée + grand titre qui monte vers les
+ *  icônes de statut (batterie/découpage) et disparaît vers le haut au scroll. ---------- */
+export function useHeaderCollapse() {
+  const y = useRef(new Animated.Value(0)).current;
+  const onScroll = (e: any) => { const v = e?.nativeEvent?.contentOffset?.y ?? 0; y.setValue(Math.max(0, v)); };
+  const bar: any = {
+    backgroundColor: y.interpolate({ inputRange: [0, 110], outputRange: ['rgba(238,247,255,0)', 'rgba(238,247,255,.86)'], extrapolate: 'clamp' }),
+  };
+  const hero: any = {
+    transform: [
+      { translateY: y.interpolate({ inputRange: [0, 120], outputRange: [0, -50], extrapolate: 'clamp' }) },
+      { scale: y.interpolate({ inputRange: [0, 120], outputRange: [1, 0.82], extrapolate: 'clamp' }) },
+    ],
+    opacity: y.interpolate({ inputRange: [60, 140], outputRange: [1, 0], extrapolate: 'clamp' }),
+  };
+  return { onScroll, bar, hero };
+}
+
 /* ---------- Header utilisateur ---------- */
 export function Header({ name, avatar, onEdit, onBrowser, onNotifs, onSettings, hasNotif, deep, refs }: { name: string; avatar: any; onEdit?: () => void; onBrowser?: () => void; onNotifs?: () => void; onSettings?: () => void; hasNotif?: boolean; deep?: boolean; refs?: { browser?: any; notifs?: any; settings?: any } }) {
   const col = deep ? '#fff' : C.ink;

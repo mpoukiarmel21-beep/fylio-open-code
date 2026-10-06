@@ -1,11 +1,12 @@
 /** Écran 5 — Accueil (+ états vides 5/6, visite guidée 11 étapes 5a→5k, popup Historique). */
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Image, ScrollView, StyleSheet, Animated } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Send, Download, Smartphone, Clock, Zap, Wifi, Usb } from 'lucide-react-native';
-import { Screen, Header, GlassCard, Press, T, SectionTitle, FadeIn, W, useScrollHide } from '../ui';
+import { Screen, Header, GlassCard, Press, T, SectionTitle, FadeIn, W, useHeaderCollapse } from '../ui';
 import { Tour, TourStep } from '../ui/Tour';
 import { NAV_H } from '../ui/GlassNav';
 import { C, F, R, S } from '../theme';
@@ -64,20 +65,19 @@ export function HomeScreen() {
     { ref: r.settings, title: t('tour.settings.0'), text: t('tour.settings.1'), radius: 24, last: t('common.letsGo') },
   ];
   const empty = app.devices.length === 0 && app.history.length === 0;
-  const hs = useScrollHide();
+  const ins = useSafeAreaInsets();
+  const hs = useHeaderCollapse();
   return (
     <Screen bg={4}>
-      <Animated.View style={hs.wrap}>
-        <Header name={app.firstName || 'Chris'} avatar={avatar} hasNotif={hasNotif} refs={{ browser: r.browser, notifs: r.notifs, settings: r.settings }}
-          onEdit={() => nav.navigate('Who', { fromSettings: true })} onBrowser={() => nav.navigate('Browser')} onNotifs={() => nav.navigate('Notifications')} onSettings={() => nav.navigate('Settings')} />
-      </Animated.View>
-      <ScrollView contentContainerStyle={{ paddingBottom: NAV_H + 40 }} showsVerticalScrollIndicator={false} onScroll={hs.onScroll} scrollEventThrottle={16}>
-        <FadeIn style={{ paddingHorizontal: S.pad, marginTop: 10 }}>
-          <Text style={T.h1()}>{t('home.hello', { name: app.firstName || 'Chris' })}</Text>
-          <Text style={T.lead()}>{t('home.ready')}</Text>
-        </FadeIn>
+      <ScrollView contentContainerStyle={{ paddingTop: 66, paddingBottom: NAV_H + 40 }} showsVerticalScrollIndicator={false} onScroll={hs.onScroll} scrollEventThrottle={16}>
+        <Animated.View style={hs.hero}>
+          <FadeIn style={{ paddingHorizontal: S.pad, marginTop: 10 }}>
+            <Text style={T.h1()}>{t('home.hello', { name: app.firstName || 'Chris' })}</Text>
+            <Text style={T.lead()}>{t('home.ready')}</Text>
+          </FadeIn>
+        </Animated.View>
         <FadeIn delay={120} style={{ flexDirection: 'row', gap: 12, paddingHorizontal: S.pad, marginTop: 8, alignItems: 'flex-end' }}>
-          <Image source={IMG.mascotMain} style={{ width: W * 0.3, height: W * 0.4, flexShrink: 0, marginBottom: 6 }} resizeMode="contain" />
+          <Image source={IMG.mascotMain} style={{ width: W * 0.36, height: W * 0.5, flexShrink: 0, marginBottom: 6 }} resizeMode="contain" />
           <View style={{ flex: 1, gap: 10 }}>
             <View ref={r.send} collapsable={false}>
               <Press onPress={() => nav.navigate('SendSelect')} style={{ borderRadius: R.cardLg }}>
@@ -148,16 +148,21 @@ export function HomeScreen() {
           </FadeIn>
         )}
       </ScrollView>
+      <Animated.View style={[st.hdr, { top: -ins.top, paddingTop: ins.top, backgroundColor: hs.bar.backgroundColor }]} pointerEvents="box-none">
+        <Header name={app.firstName || 'Chris'} avatar={avatar} hasNotif={hasNotif} refs={{ browser: r.browser, notifs: r.notifs, settings: r.settings }}
+          onEdit={() => nav.navigate('Who', { fromSettings: true })} onBrowser={() => nav.navigate('Browser')} onNotifs={() => nav.navigate('Notifications')} onSettings={() => nav.navigate('Settings')} />
+      </Animated.View>
       <Tour visible={tour} steps={steps} onDone={() => { setTour(false); app.set({ tourDone: true }); }} />
     </Screen>
   );
 }
 export { fmtDur };
 const st = StyleSheet.create({
-  cta: { borderRadius: R.cardLg, padding: 12, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  hdr: { position: 'absolute', left: 0, right: 0, zIndex: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(8,124,255,.16)' },
+  cta: { borderRadius: R.cardLg, padding: 10, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   ctaBlue: { backgroundColor: '#1680FF', borderColor: C.glassBlueBorder, shadowColor: C.glow, shadowOpacity: 0.45, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
-  ctaIco: { width: 30, height: 30, flexShrink: 0 },
-  ctaT: { fontFamily: F.title, fontSize: 18, color: C.ink },
-  ctaS: { fontFamily: F.body, fontSize: 12, color: C.mute },
+  ctaIco: { width: 26, height: 26, flexShrink: 0 },
+  ctaT: { fontFamily: F.title, fontSize: 15, color: C.ink },
+  ctaS: { fontFamily: F.body, fontSize: 11, color: C.mute },
   hIco: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
 });

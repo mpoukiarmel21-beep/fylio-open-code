@@ -17,8 +17,10 @@ import { C, F, R } from '../theme';
 import { Press } from './index';
 
 export const NAV_H = 72;
-/** Onglets inactifs : contraste fort sur la pilule blanche (C.mute était trop pâle → « invisibles »). */
-const DIM = '#425488';
+/** Icônes ALWAYS visibles : pilule bleu nuit opaque + icônes blanches.
+ *  L'ancienne pilule blanche translucide + icônes grises → quasiment invisibles
+ *  (« Réduire la transparence » iOS rend le BlurView opaque) : corrigé. */
+const ICON_OFF = 'rgba(255,255,255,.9)';
 export type Tab = 'Home' | 'Files' | 'Music' | 'Gallery';
 const TABS: { key: Tab; icon: any; label: string }[] = [
   { key: 'Home', icon: Home, label: 'common.home' },
@@ -60,11 +62,11 @@ export function GlassNav({ active, onTab, cable, onCharger, chargerRef, tabRefs 
   return (
     <View style={[st.wrap, { paddingBottom: Math.max(ins.bottom - 20, 4) }]} pointerEvents="box-none">
       <View style={st.nav} onLayout={(e) => setNavW(e.nativeEvent.layout.width)}>
-        <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
-        <LinearGradient colors={['rgba(255,255,255,.62)', 'rgba(255,255,255,.34)']} style={StyleSheet.absoluteFill} />
+        <BlurView intensity={42} tint="dark" style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(11,24,68,.9)', 'rgba(16,20,93,.72)']} style={StyleSheet.absoluteFill} />
         {slot > 0 && (
           <Animated.View style={[st.ind, { width: capW, transform: [{ translateX: Animated.add(Animated.multiply(ind, slot), new Animated.Value(5)) }] }]}>
-            <LinearGradient colors={['rgba(8,124,255,.16)', 'rgba(46,144,250,.09)']} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={['rgba(20,138,255,.55)', 'rgba(64,158,250,.22)']} style={StyleSheet.absoluteFill} />
             <View style={st.bar} />
           </Animated.View>
         )}
@@ -73,8 +75,8 @@ export function GlassNav({ active, onTab, cable, onCharger, chargerRef, tabRefs 
           return (
             <View key={tb.key} ref={tabRefs?.[tb.key]} collapsable={false} style={{ flex: 1 }}>
               <Press onPress={() => onTab(tb.key)} style={st.tab}>
-                <Ico size={24} color={on ? C.accent : DIM} strokeWidth={on ? 2.6 : 2.4} />
-                <Text style={{ fontFamily: on ? F.bodyX : F.bodyB, fontSize: 10, color: on ? C.accent : DIM }}>{t(tb.label)}</Text>
+                <Ico size={25} color={on ? '#fff' : ICON_OFF} strokeWidth={on ? 2.7 : 2.3} />
+                <Text style={{ fontFamily: on ? F.bodyX : F.bodyB, fontSize: 10.5, color: on ? '#fff' : ICON_OFF }}>{t(tb.label)}</Text>
               </Press>
             </View>
           );
@@ -83,10 +85,10 @@ export function GlassNav({ active, onTab, cable, onCharger, chargerRef, tabRefs 
       <View ref={chargerRef} collapsable={false} style={{ width: 56, height: NAV_H, alignItems: 'center', justifyContent: 'center' }}>
         <Press onPress={onCharger} style={st.charger}>
           {cable && <Animated.View style={[st.halo, { opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.75] }), transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.22] }) }] }]} />}
-          <View style={[st.chargerIn, cable && { borderColor: 'rgba(29,186,107,.65)', backgroundColor: 'rgba(29,186,107,.14)' }]}>
-            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
-            {!cable && <LinearGradient colors={['rgba(255,255,255,.62)', 'rgba(255,255,255,.34)']} style={StyleSheet.absoluteFill} />}
-            <CableIco size={26} color={cable ? C.green : C.ink} sw={1.9} />
+          <View style={[st.chargerIn, cable && { borderColor: 'rgba(61,223,154,.7)', backgroundColor: 'rgba(29,186,107,.18)' }]}>
+            <BlurView intensity={42} tint="dark" style={StyleSheet.absoluteFill} />
+            {!cable && <LinearGradient colors={['rgba(11,24,68,.9)', 'rgba(16,20,93,.72)']} style={StyleSheet.absoluteFill} />}
+            <CableIco size={26} color={cable ? '#3DDF9A' : ICON_OFF} sw={1.9} />
             {cable && <View style={st.dot} />}
           </View>
         </Press>
@@ -96,12 +98,12 @@ export function GlassNav({ active, onTab, cable, onCharger, chargerRef, tabRefs 
 }
 const st = StyleSheet.create({
   wrap: { position: 'absolute', left: 14, right: 14, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  nav: { flex: 1, height: NAV_H, borderRadius: R.nav, overflow: 'hidden', flexDirection: 'row', borderWidth: 1, borderColor: 'rgba(255,255,255,.75)', shadowColor: '#166AB1', shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 6 },
+  nav: { flex: 1, height: NAV_H, borderRadius: R.nav, overflow: 'hidden', flexDirection: 'row', borderWidth: 1, borderColor: 'rgba(255,255,255,.2)', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 10 },
   ind: { position: 'absolute', top: 6, bottom: 6, borderRadius: 26, overflow: 'hidden' },
-  bar: { position: 'absolute', bottom: 5, alignSelf: 'center', width: 20, height: 3, borderRadius: 2, backgroundColor: C.accent },
+  bar: { position: 'absolute', bottom: 5, alignSelf: 'center', width: 20, height: 3, borderRadius: 2, backgroundColor: '#6FC6FF' },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 3, height: NAV_H, paddingHorizontal: 4, paddingBottom: 14 },
   charger: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
-  chargerIn: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,.75)' },
+  chargerIn: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,.2)' },
   halo: { position: 'absolute', width: 70, height: 70, borderRadius: 35, backgroundColor: '#54ffbd' },
   dot: { position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: C.green },
 });

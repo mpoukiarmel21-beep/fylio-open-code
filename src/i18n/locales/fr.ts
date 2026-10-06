@@ -27,7 +27,7 @@ export default {
   files: { title: 'Fichiers', subtitle: 'Accède à tous tes fichiers.', search: 'Rechercher un fichier…', images: 'Images', videos: 'Vidéos', docs: 'Documents', musicF: 'Musique', downloads: 'Téléchargements', received: 'Reçus', items: '{{count}} éléments', select: 'Sélectionner' },
   gallery: { title: 'Galerie', search: 'Rechercher une photo…', all: 'Tout', photos: 'Photos', videos: 'Vidéos', today: "Aujourd'hui", week: 'Cette semaine' },
   music: { count: '{{count}} titres', title: 'Musique', search: 'Rechercher une musique…', recent: 'Musique récente', all: 'Toutes les musiques', nowPlaying: 'En lecture', favorites: 'Favoris', lockDemo: 'Widget écran verrouillé (aperçu)', lockHint: 'Le widget apparaît uniquement sur l’écran de verrouillage et le centre de contrôle (expo-audio + Now Playing).' },
-  video: { title: 'Lecteur vidéo', pip: 'Image dans l’image' },
+  video: { title: 'Lecteur vidéo', pip: 'Image dans l’image', audioMode: 'Lecture audio en arrière-plan', audioPlaying: 'En lecture…', audioPaused: 'En pause' },
   pdf: { title: 'Lecteur PDF', page: 'Page {{n}} / {{total}}' },
   browser: { title: 'Navigateur', placeholder: 'Rechercher ou saisir une adresse', tabs: 'Onglets', bookmarks: 'Favoris', downloads: 'Téléchargements', newTab: 'Nouvel onglet' },
   notifs: { title: 'Notifications', empty: 'Aucune notification', emptySub: 'Les demandes de transfert et alertes arriveront ici.', done: 'Transfert terminé', failed: 'Transfert interrompu', request: 'Demande de transfert' },

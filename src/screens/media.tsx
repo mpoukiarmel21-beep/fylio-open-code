@@ -10,8 +10,8 @@ import { WebView } from 'react-native-webview';
 import Pdf from 'react-native-pdf';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { Folder, Image as ImgIco, Video, Music, FileText, Download, Inbox, Play, Pause, SkipBack, SkipForward, Heart, Share2, Trash2, Info, X, ChevronLeft, ChevronRight, Globe, Lock, RotateCw, Plus, Bookmark, Volume2, VolumeX, Repeat, Shuffle, Send, ShieldCheck, FolderPlus } from 'lucide-react-native';
-import { Screen, Header, HeaderBack, GlassCard, GlassButton, GhostButton, Press, Search, Chip, T, SectionTitle, FadeIn, W, H, Row, IconButton, useScrollHide } from '../ui';
+import { Folder, Image as ImgIco, Video, Music, FileText, Download, Inbox, Play, Pause, SkipBack, SkipForward, Heart, Share2, Trash2, Info, X, ChevronLeft, ChevronRight, Globe, Lock, RotateCw, Plus, Bookmark, Volume2, VolumeX, Repeat, Shuffle, Send, ShieldCheck, FolderPlus, Headphones, PictureInPicture2 } from 'lucide-react-native';
+import { Screen, Header, HeaderBack, GlassCard, GlassButton, GhostButton, Press, Search, Chip, T, SectionTitle, FadeIn, W, H, Row, IconButton, useScrollHide, useHeaderCollapse } from '../ui';
 import { NAV_H } from '../ui/GlassNav';
 import { C, F, R, S } from '../theme';
 import { IMG } from '../assets';
@@ -41,16 +41,18 @@ export function FilesScreen() {
   ] as const;
   const granted = lib.perm === 'granted';
   const total = folders.reduce((a, f) => a + f.n, 0);
-  const hs = useScrollHide();
+  const ins = useSafeAreaInsets();
+  const hs = useHeaderCollapse();
   const doImport = async () => { setImporting(true); try { await lib.importDocs(); } finally { setImporting(false); } };
   return (
     <Screen bg={4}>
-      <Animated.View style={hs.wrap}><Header {...hp} /></Animated.View>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: S.padTight + 4, paddingBottom: NAV_H + 40 }} onScroll={hs.onScroll} scrollEventThrottle={16}>
-        <FadeIn style={{ flexDirection: 'row', alignItems: 'flex-end', marginTop: 8 }}>
-          <View style={{ flex: 1 }}><Text style={T.h1()}>{t('files.title')}</Text><Text style={T.lead()}>{t('files.subtitle')}</Text></View>
-          <Image source={IMG.filesMascot} style={{ width: 130, height: 130, flexShrink: 0, marginBottom: 2, marginRight: 4 }} resizeMode="contain" />
-        </FadeIn>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: S.padTight + 4, paddingTop: 66, paddingBottom: NAV_H + 40 }} onScroll={hs.onScroll} scrollEventThrottle={16}>
+        <Animated.View style={hs.hero}>
+          <FadeIn style={{ flexDirection: 'row', alignItems: 'flex-end', marginTop: 8 }}>
+            <View style={{ flex: 1 }}><Text style={T.h1()}>{t('files.title')}</Text><Text style={T.lead()}>{t('files.subtitle')}</Text></View>
+            <Image source={IMG.filesMascot} style={{ width: 130, height: 130, flexShrink: 0, marginBottom: 2, marginRight: 4 }} resizeMode="contain" />
+          </FadeIn>
+        </Animated.View>
         <Search placeholder={t('files.search')} value={q} onChange={setQ} style={{ marginTop: 6 }} />
         {!granted && (
           <GlassCard style={{ marginTop: 12 }}>
@@ -89,6 +91,9 @@ export function FilesScreen() {
           ))}
         </View>
       </ScrollView>
+      <Animated.View style={[st.hdr, { top: -ins.top, paddingTop: ins.top, backgroundColor: hs.bar.backgroundColor }]} pointerEvents="box-none">
+        <Header {...hp} />
+      </Animated.View>
     </Screen>
   );
 }
@@ -134,7 +139,8 @@ export function GalleryScreen() {
   const cell = (W - 16 - 6 * 2) / 3;
   const now = Date.now();
   const dayMs = 864e5;
-  const hs = useScrollHide();
+  const ins = useSafeAreaInsets();
+  const hs = useHeaderCollapse();
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
   const groups = [
     { k: 'today', list: items.filter((f) => f.date >= startOfToday.getTime()) },
@@ -143,12 +149,13 @@ export function GalleryScreen() {
   ];
   return (
     <Screen bg={4}>
-      <Animated.View style={hs.wrap}><Header {...hp} /></Animated.View>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: NAV_H + 40 }} onScroll={hs.onScroll} scrollEventThrottle={16}>
-        <FadeIn style={{ flexDirection: 'row', alignItems: 'flex-end', marginTop: 8 }}>
-          <View style={{ flex: 1 }}><Text style={T.h1()}>{t('gallery.title')}</Text><Text style={T.lead()}>{items.length} {t('gallery.photos').toLowerCase()} & {t('gallery.videos').toLowerCase()}</Text></View>
-          <Image source={IMG.galleryMascot} style={{ width: 150, height: 146, flexShrink: 0, marginBottom: 2, marginRight: 4 }} resizeMode="contain" />
-        </FadeIn>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 66, paddingBottom: NAV_H + 40 }} onScroll={hs.onScroll} scrollEventThrottle={16}>
+        <Animated.View style={hs.hero}>
+          <FadeIn style={{ flexDirection: 'row', alignItems: 'flex-end', marginTop: 8 }}>
+            <View style={{ flex: 1 }}><Text style={T.h1()}>{t('gallery.title')}</Text><Text style={T.lead()}>{items.length} {t('gallery.photos').toLowerCase()} & {t('gallery.videos').toLowerCase()}</Text></View>
+            <Image source={IMG.galleryMascot} style={{ width: 150, height: 146, flexShrink: 0, marginBottom: 2, marginRight: 4 }} resizeMode="contain" />
+          </FadeIn>
+        </Animated.View>
         <Search placeholder={t('gallery.search')} value={q} onChange={setQ} />
         <View style={{ flexDirection: 'row', gap: 8, marginVertical: 10 }}>{(['all', 'photos', 'videos'] as const).map((k) => <Chip key={k} label={t(`gallery.${k}`)} active={filter === k} onPress={() => setFilter(k)} />)}</View>
         {!items.length && <Text style={[T.body(), { textAlign: 'center', paddingTop: 24 }]}>{lib.perm === 'granted' ? t('lib.empty') : t('lib.grantSub')}</Text>}
@@ -169,16 +176,25 @@ export function GalleryScreen() {
           </View>
         ))}
       </ScrollView>
+      <Animated.View style={[st.hdr, { top: -ins.top, paddingTop: ins.top, backgroundColor: hs.bar.backgroundColor }]} pointerEvents="box-none">
+        <Header {...hp} />
+      </Animated.View>
     </Screen>
   );
 }
 /* 19 — Visionneuse façon Photos : pager horizontal, fond noir, barre d'actions (Partager / Favori / Infos / Supprimer) qui se cache au tap */
+const fmtDate = (ms: number) => {
+  const d = new Date(ms); const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} · ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+const kindLabel = (f: FileItem, t: any) => f.kind === 'photo' ? t('gallery.photos') : f.kind === 'video' ? t('gallery.videos') : f.kind === 'music' ? t('common.music') : 'Document';
 export function ViewerScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
   const { items, index } = route.params as { items: FileItem[]; index: number };
-  const [i, setI] = useState(Math.max(0, index)); const [ui, setUi] = useState(true); const [fav, setFav] = useState(false);
+  const [i, setI] = useState(Math.max(0, index)); const [ui, setUi] = useState(true); const [fav, setFav] = useState(false); const [info, setInfo] = useState(false);
   const op = useRef(new Animated.Value(1)).current;
   useEffect(() => { Animated.timing(op, { toValue: ui ? 1 : 0, duration: 200, useNativeDriver: true }).start(); }, [ui]);
+  const it = items[i];
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       <FlatList data={items} horizontal pagingEnabled initialScrollIndex={i} getItemLayout={(_, k) => ({ length: W, offset: W * k, index: k })} keyExtractor={(f) => f.id} onMomentumScrollEnd={(e) => setI(Math.round(e.nativeEvent.contentOffset.x / W))} showsHorizontalScrollIndicator={false}
@@ -189,8 +205,31 @@ export function ViewerScreen() {
         <View style={{ width: 40 }} />
       </Animated.View>
       <Animated.View style={[st.viewerBar, { opacity: op }]} pointerEvents={ui ? 'auto' : 'none'}>
-        {[{ i: Share2, a: () => {} }, { i: Heart, a: () => setFav(!fav), on: fav }, { i: Info, a: () => {} }, { i: Trash2, a: () => nav.goBack() }].map((b, k) => <Press key={k} onPress={b.a} hit={8}><b.i size={24} color={b.on ? '#FF5A8A' : '#fff'} fill={b.on ? '#FF5A8A' : 'none'} /></Press>)}
+        {[{ i: Share2, a: () => {} }, { i: Heart, a: () => setFav(!fav), on: fav }, { i: Info, a: () => setInfo(true) }, { i: Trash2, a: () => nav.goBack() }].map((b, k) => <Press key={k} onPress={b.a} hit={8}><b.i size={24} color={b.on ? '#FF5A8A' : '#fff'} fill={b.on ? '#FF5A8A' : 'none'} /></Press>)}
       </Animated.View>
+      <Modal visible={info && !!it} transparent animationType="slide" onRequestClose={() => setInfo(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,.5)', justifyContent: 'flex-end' }} onPress={() => setInfo(false)}>
+          <View style={{ margin: 12, paddingBottom: 30 }}>
+            <GlassCard deep padding={16} radius={R.cardLg}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <Text style={{ flex: 1, color: '#fff', fontFamily: F.title, fontSize: 19 }} numberOfLines={2}>{it?.name}</Text>
+                <Press onPress={() => setInfo(false)} hit={8}><X size={20} color="rgba(255,255,255,.75)" /></Press>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><View style={{ width: 40, height: 40, borderRadius: 10, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,.12)' }}>{it && <PhImage uri={it.uri} direct style={{ width: 40, height: 40 }} contentFit="cover" />}</View>
+                <Text style={{ color: 'rgba(255,255,255,.75)', fontFamily: F.body, fontSize: 13 }}>{kindLabel(it, t)}</Text></View>
+              <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,.2)', marginVertical: 12 }} />
+              {[
+                it && it.size > 0 ? ['Taille', fmtSize(it.size)] : null,
+                it && it.w && it.h ? ['Dimensions', `${it.w} × ${it.h} px`] : null,
+                it && it.duration ? ['Durée', fmtDur(it.duration)] : null,
+                it ? ['Modifié', fmtDate(it.date)] : null,
+              ].filter((r): r is [string, string] => !!r).map(([k, v], n) => <Row key={n} title={k} sub={v} deep />)}
+              <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,.2)', marginVertical: 12 }} />
+              <Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 13 }}>{`${i + 1} / ${items.length}`} · {fmtFileSub(it)}</Text>
+            </GlassCard>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -214,7 +253,12 @@ const SAMPLE_VIDEOS = [
 export function VideoScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
   const { item } = route.params as { item: FileItem };
-  const player = useVideoPlayer(null, (p) => { p.loop = false; p.timeUpdateEventInterval = 0.5; });
+  const player = useVideoPlayer(null, (p) => { p.loop = false; p.timeUpdateEventInterval = 0.5; p.staysActiveInBackground = true; });
+  const vref = useRef<any>(null);
+  /** Piste « transformer la vidéo en audio » (façon PLAYit) : la même source est jouée par le
+   *  lecteur audio global (widget écran verrouillé + lecture en arrière-plan, survit à la sortie). */
+  const pl = usePlayer();
+  const [audioMode, setAudioMode] = useState(false);
   const [state, setState] = useState({ pos: 0, dur: item.duration ?? 0, playing: false, loading: true, err: false });
   const [muted, setMuted] = useState(false);
   const [trackW, setTrackW] = useState(1);
@@ -224,6 +268,18 @@ export function VideoScreen() {
   const busyRef = useRef(false);
   const aliveRef = useRef(true);
   useEffect(() => { stateRef.current = state; }, [state]);
+  const goPip = () => { try { void vref.current?.startPictureInPicture?.(); } catch { /* PiP indisponible */ } };
+  const enterAudio = () => {
+    try { if (String(player.status) === 'readyToPlay') player.pause(); } catch { /* déjà en pause */ }
+    pl.play({ id: 'video-' + encodeURIComponent(item.uri ?? ''), title: item.name, artist: t('video.audioMode'), duration: stateRef.current.dur || item.duration || 0, uri: item.uri, name: item.name });
+    setAudioMode(true);
+  };
+  const exitAudio = () => {
+    if (pl.playing) pl.toggle();
+    setAudioMode(false);
+    if (String(player.status) === 'readyToPlay') { try { player.play(); } catch { /* lecture reprise refusée */ } }
+  };
+  const toggleAudio = () => { if (audioMode) exitAudio(); else enterAudio(); };
   /** Avance dans la chaîne de candidats (fichier réel → variantes → vidéos de démo). Bornée par la longueur de la chaîne. */
   const tryNext = async () => {
     if (busyRef.current) return;
@@ -285,7 +341,7 @@ export function VideoScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       <View style={{ flex: 1 }}>
-        {!state.err && <VideoView player={player} style={{ width: '100%', height: '100%' }} contentFit="contain" nativeControls={false} allowsPictureInPicture />}
+        {!state.err && <VideoView ref={vref} player={player} style={{ width: '100%', height: '100%' }} contentFit="contain" nativeControls={false} allowsPictureInPicture startsPictureInPictureAutomatically />}
         {state.err && (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 30 }}>
             <Video size={42} color="rgba(255,255,255,.55)" />
@@ -298,8 +354,22 @@ export function VideoScreen() {
             <ActivityIndicator size="large" color="#fff" />
           </View>
         )}
+        {audioMode && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,.45)' }} pointerEvents="none">
+            <Headphones size={34} color="#fff" />
+            <Text style={{ color: '#fff', fontFamily: F.bodyB, fontSize: 13 }}>{t('video.audioMode')}</Text>
+            <Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 12 }}>{pl.playing ? t('video.audioPlaying') : t('video.audioPaused')}</Text>
+          </View>
+        )}
       </View>
-      <View style={st.viewerTop}><IconButton icon={ChevronLeft} deep onPress={() => nav.goBack()} /><Text style={{ flex: 1, textAlign: 'center', color: '#fff', fontFamily: F.bodyB }} numberOfLines={1}>{item.name}</Text><View style={{ width: 40 }} /></View>
+      <View style={st.viewerTop}>
+        <IconButton icon={ChevronLeft} deep onPress={() => nav.goBack()} />
+        <Text style={{ flex: 1, textAlign: 'center', color: '#fff', fontFamily: F.bodyB }} numberOfLines={1}>{item.name}</Text>
+        <View style={{ flexDirection: 'row', gap: 14 }}>
+          <Press onPress={toggleAudio} hit={8}><Headphones size={22} color="#fff" fill={audioMode ? '#7DD7FF' : 'none'} /></Press>
+          <Press onPress={goPip} hit={8}><PictureInPicture2 size={22} color="#fff" /></Press>
+        </View>
+      </View>
       <View style={{ position: 'absolute', left: 14, right: 14, bottom: 40 }}>
         <GlassCard deep padding={14}>
           <Pressable onPress={(e) => seekTo((e.nativeEvent.locationX / Math.max(1, trackW)) * dur)} style={{ paddingVertical: 6 }}>
@@ -684,6 +754,7 @@ export function BrowserScreen() {
 }
 export { Globe, Dimensions };
 const st = StyleSheet.create({
+  hdr: { position: 'absolute', left: 0, right: 0, zIndex: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(8,124,255,.16)' },
   folderIco: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   chk: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: C.mute },
   vidBadge: { position: 'absolute', left: 6, bottom: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,.45)', borderRadius: 8, paddingHorizontal: 5, paddingVertical: 2 },
