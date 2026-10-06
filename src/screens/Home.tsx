@@ -77,25 +77,31 @@ export function HomeScreen() {
           <Text style={T.lead()}>{t('home.ready')}</Text>
         </FadeIn>
         <FadeIn delay={120} style={{ flexDirection: 'row', gap: 12, paddingHorizontal: S.pad, marginTop: 8, alignItems: 'flex-end' }}>
+          <Image source={IMG.mascotMain} style={{ width: W * 0.3, height: W * 0.4, flexShrink: 0, marginBottom: 6 }} resizeMode="contain" />
           <View style={{ flex: 1, gap: 10 }}>
             <View ref={r.send} collapsable={false}>
               <Press onPress={() => nav.navigate('SendSelect')} style={{ borderRadius: R.cardLg }}>
                 <View style={[st.cta, st.ctaBlue]}>
-                  <Image source={IMG.ico.send} style={st.ctaImg} resizeMode="contain" />
-                  <Text style={[st.ctaT, { color: '#fff' }]}>{t('common.send')}</Text><Text style={[st.ctaS, { color: 'rgba(255,255,255,.85)' }]}>{t('home.sendSub')}</Text>
+                  <Image source={IMG.ico.send} style={st.ctaIco} resizeMode="contain" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[st.ctaT, { color: '#fff' }]}>{t('common.send')}</Text><Text style={[st.ctaS, { color: 'rgba(255,255,255,.85)' }]}>{t('home.sendSub')}</Text>
+                  </View>
                 </View>
               </Press>
             </View>
             <View ref={r.recv} collapsable={false}>
               <Press onPress={() => nav.navigate('Nearby', { files: [], mode: 'receive' })} style={{ borderRadius: R.cardLg }}>
-                <GlassCard padding={14} radius={R.cardLg}>
-                  <Image source={IMG.ico.receive} style={st.ctaImg} resizeMode="contain" />
-                  <Text style={st.ctaT}>{t('common.receive')}</Text><Text style={st.ctaS}>{t('home.receiveSub')}</Text>
+                <GlassCard padding={12} radius={R.cardLg}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Image source={IMG.ico.receive} style={st.ctaIco} resizeMode="contain" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={st.ctaT}>{t('common.receive')}</Text><Text style={st.ctaS}>{t('home.receiveSub')}</Text>
+                    </View>
+                  </View>
                 </GlassCard>
               </Press>
             </View>
           </View>
-          <Image source={IMG.mascotMain} style={{ width: W * 0.33, height: W * 0.45, flexShrink: 0, marginBottom: 6 }} resizeMode="contain" />
         </FadeIn>
 
         <FadeIn delay={180} style={{ paddingHorizontal: S.padTight, marginTop: 14 }}>
@@ -148,9 +154,9 @@ export function HomeScreen() {
 }
 export { fmtDur };
 const st = StyleSheet.create({
-  cta: { borderRadius: R.cardLg, padding: 14, minHeight: 118, borderWidth: 1 },
+  cta: { borderRadius: R.cardLg, padding: 12, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   ctaBlue: { backgroundColor: '#1680FF', borderColor: C.glassBlueBorder, shadowColor: C.glow, shadowOpacity: 0.45, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
-  ctaImg: { width: 44, height: 44, marginBottom: 6 },
+  ctaIco: { width: 30, height: 30, flexShrink: 0 },
   ctaT: { fontFamily: F.title, fontSize: 18, color: C.ink },
   ctaS: { fontFamily: F.body, fontSize: 12, color: C.mute },
   hIco: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },

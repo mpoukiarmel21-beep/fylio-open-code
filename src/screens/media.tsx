@@ -362,7 +362,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (modeRef.current) return;
     modeRef.current = true;
-    setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false, interruptionMode: 'doNotMix' }).catch(() => {});
+    setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: 'doNotMix' }).catch(() => {});
   }, []);
   const play = (s: Song) => {
     setSong(s);
@@ -372,7 +372,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       .catch(() => null)
       .then((u) => {
         try { player.replace(u ?? raw); player.play(); } catch { /* audio média iOS non résoluble : on garde l'état UI */ }
-        try { player.setActiveForLockScreen(true, { title: s.title, artist: s.artist || undefined }); } catch { /* lock-screen non supporté */ }
+        try { player.setActiveForLockScreen(true, { title: s.title, artist: s.artist || undefined }, { showSeekBackward: true, showSeekForward: true }); } catch { /* lock-screen non supporté */ }
       });
   };
   const idx = song ? songs.findIndex((s) => s.id === song.id) : -1;

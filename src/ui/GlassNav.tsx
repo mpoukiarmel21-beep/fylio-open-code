@@ -17,6 +17,8 @@ import { C, F, R } from '../theme';
 import { Press } from './index';
 
 export const NAV_H = 72;
+/** Onglets inactifs : contraste fort sur la pilule blanche (C.mute était trop pâle → « invisibles »). */
+const DIM = '#425488';
 export type Tab = 'Home' | 'Files' | 'Music' | 'Gallery';
 const TABS: { key: Tab; icon: any; label: string }[] = [
   { key: 'Home', icon: Home, label: 'common.home' },
@@ -56,7 +58,7 @@ export function GlassNav({ active, onTab, cable, onCharger, chargerRef, tabRefs 
   const slot = navW > 0 ? navW / 4 : 0;
   const capW = Math.max(0, slot - 10);
   return (
-    <View style={[st.wrap, { paddingBottom: Math.max(ins.bottom - 12, 6) }]} pointerEvents="box-none">
+    <View style={[st.wrap, { paddingBottom: Math.max(ins.bottom - 20, 4) }]} pointerEvents="box-none">
       <View style={st.nav} onLayout={(e) => setNavW(e.nativeEvent.layout.width)}>
         <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
         <LinearGradient colors={['rgba(255,255,255,.62)', 'rgba(255,255,255,.34)']} style={StyleSheet.absoluteFill} />
@@ -71,8 +73,8 @@ export function GlassNav({ active, onTab, cable, onCharger, chargerRef, tabRefs 
           return (
             <View key={tb.key} ref={tabRefs?.[tb.key]} collapsable={false} style={{ flex: 1 }}>
               <Press onPress={() => onTab(tb.key)} style={st.tab}>
-                <Ico size={24} color={on ? C.accent : C.mute} strokeWidth={on ? 2.6 : 2.2} />
-                <Text style={{ fontFamily: on ? F.bodyX : F.bodyB, fontSize: 10, color: on ? C.accent : C.mute }}>{t(tb.label)}</Text>
+                <Ico size={24} color={on ? C.accent : DIM} strokeWidth={on ? 2.6 : 2.4} />
+                <Text style={{ fontFamily: on ? F.bodyX : F.bodyB, fontSize: 10, color: on ? C.accent : DIM }}>{t(tb.label)}</Text>
               </Press>
             </View>
           );
@@ -97,7 +99,7 @@ const st = StyleSheet.create({
   nav: { flex: 1, height: NAV_H, borderRadius: R.nav, overflow: 'hidden', flexDirection: 'row', borderWidth: 1, borderColor: 'rgba(255,255,255,.75)', shadowColor: '#166AB1', shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 6 },
   ind: { position: 'absolute', top: 6, bottom: 6, borderRadius: 26, overflow: 'hidden' },
   bar: { position: 'absolute', bottom: 5, alignSelf: 'center', width: 20, height: 3, borderRadius: 2, backgroundColor: C.accent },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, height: NAV_H, paddingHorizontal: 4 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 3, height: NAV_H, paddingHorizontal: 4, paddingBottom: 14 },
   charger: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
   chargerIn: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,.75)' },
   halo: { position: 'absolute', width: 70, height: 70, borderRadius: 35, backgroundColor: '#54ffbd' },

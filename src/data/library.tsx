@@ -7,6 +7,7 @@ import type { AssetMetadata } from 'expo-media-library';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
 import type { FileItem, Song, FileKind } from './mock';
+import { DEMO_SONGS } from './mock';
 
 const IMG_MAX = 240;
 const VID_MAX = 120;
@@ -32,7 +33,7 @@ const stripExt = (name: string) => name.replace(/\.[^.]+$/, '') || name;
 /* ---------- résolution d'URI (media → file://) ---------- */
 const thumbCache = new Map<string, string>();
 const withPrefix = (id: string) => (Platform.OS === 'ios' && !id.startsWith('ph://') && !id.startsWith('file://') ? 'ph://' + id : id);
-const isDirect = (u?: string | null) => !!u && (u.startsWith('file://') || u.startsWith('content://'));
+const isDirect = (u?: string | null) => !!u && (u.startsWith('file://') || u.startsWith('content://') || u.startsWith('http'));
 
 /** Résout un asset média (id iOS ph://, Android content://) vers une URI lisible. null = échec. */
 export const resolveMediaUri = async (idOrUri?: string | null): Promise<string | null> => {
@@ -85,6 +86,17 @@ const toFile = (m: AssetMetadata): FileItem => ({
   h: m.height ?? undefined,
 });
 const toSong = (f: FileItem): Song => ({ id: f.id, title: stripExt(f.name), artist: '', duration: f.duration ?? 0, uri: f.uri ?? f.id, name: f.name });
+
+/** Pistes de démo vérifiées (GET 200) : si l'appareil n'expose aucun audio, une liste jouable
+ *  s'affiche (comme la maquette) au lieu d'un onglet Musique vide. */
+const DEMO_AUDIO = [
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+];
+const demoSongs = (): Song[] => DEMO_SONGS.map((d, i) => ({ ...d, uri: DEMO_AUDIO[i % DEMO_AUDIO.length] }));
+const demoFiles = (): FileItem[] =>
+  demoSongs().map((s, i) => ({ id: s.uri as string, name: `${s.title}.mp3`, kind: 'music' as FileKind, size: 0, date: Date.now() - i * 1000, uri: s.uri, duration: s.duration }));
 
 const ensureDir = (name: SandboxDir): Directory => {
   const d = new Directory(Paths.document, name);
@@ -203,16 +215,16 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       const sbDl = scanDir('Downloads');
       const sbRcv = scanDir('Received');
       const sandboxMusic = scanMusicTree(new Directory(Paths.document));
+      const realMusic = [...media.au, ...sandboxMusic];
       setImages(media.im);
       setVideos(media.vi);
-      setMusic([...media.au, ...sandboxMusic]);
+      setMusic(realMusic.length ? realMusic : demoFiles());
       setDocs(sbDocs);
       setDownloads(sbDl);
       setReceived(sbRcv);
       const seen = new Set<string>();
-      setSongs(
-        [...media.au, ...sandboxMusic].map(toSong).filter((s) => (seen.has(s.uri ?? s.id) ? false : (seen.add(s.uri ?? s.id), true)))
-      );
+      const realSongs = realMusic.map(toSong).filter((s) => (seen.has(s.uri ?? s.id) ? false : (seen.add(s.uri ?? s.id), true)));
+      setSongs(realSongs.length ? realSongs : demoSongs());
       loadedRef.current = true;
     } finally {
       busyRef.current = false;
