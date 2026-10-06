@@ -40,13 +40,16 @@ export const resolveMediaUri = async (idOrUri?: string | null): Promise<string |
   if (isDirect(idOrUri)) return idOrUri;
   const cached = thumbCache.get(idOrUri);
   if (cached) return cached;
+  const id = withPrefix(idOrUri);
   try {
-    const uri = await new Asset(withPrefix(idOrUri)).getUri();
-    if (uri) thumbCache.set(idOrUri, uri);
-    return uri;
-  } catch {
-    return null;
-  }
+    const uri = await new Asset(id).getUri();
+    if (uri) { thumbCache.set(idOrUri, uri); return uri; }
+  } catch { /* getUri échoue (iCloud, asset absent) : on tente getInfo */ }
+  try {
+    const info = await new Asset(id).getInfo();
+    if (info?.uri) { thumbCache.set(idOrUri, info.uri); return info.uri; }
+  } catch { /* aucune URI locale disponible */ }
+  return null;
 };
 
 /** URI pour une vignette de grille : tente l'asset brut, sinon file:// local (sans déclencher de téléchargement iCloud massif). */
@@ -108,6 +111,23 @@ const scanDir = (name: SandboxDir): FileItem[] => {
         uri: f.uri,
       }))
       .sort((a, b) => b.date - a.date);
+  } catch {
+    return [];
+  }
+};
+
+/** Parcours récursif du sandbox (profondeur max 5) : tous les fichiers audio, quels que soient les sous-dossiers. */
+const scanMusicTree = (dir: Directory, depth = 0): FileItem[] => {
+  if (depth > 5) return [];
+  try {
+    if (!dir.exists) return [];
+    const out: FileItem[] = [];
+    for (const e of dir.list()) {
+      if (e instanceof File) {
+        if (kindForExt(e.name) === 'music') out.push({ id: e.uri, name: e.name, kind: 'music', size: e.size ?? 0, date: e.lastModified ?? e.creationTime ?? Date.now(), uri: e.uri });
+      } else if (e instanceof Directory && !e.name.startsWith('.')) out.push(...scanMusicTree(e, depth + 1));
+    }
+    return out;
   } catch {
     return [];
   }
@@ -182,8 +202,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       const sbDocs = scanDir('Docs');
       const sbDl = scanDir('Downloads');
       const sbRcv = scanDir('Received');
-      const sandboxAll = [...sbDocs, ...sbDl, ...sbRcv];
-      const sandboxMusic = sandboxAll.filter((f) => f.kind === 'music');
+      const sandboxMusic = scanMusicTree(new Directory(Paths.document));
       setImages(media.im);
       setVideos(media.vi);
       setMusic([...media.au, ...sandboxMusic]);

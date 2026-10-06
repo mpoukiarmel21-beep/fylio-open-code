@@ -182,7 +182,7 @@ export function ViewerScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       <FlatList data={items} horizontal pagingEnabled initialScrollIndex={i} getItemLayout={(_, k) => ({ length: W, offset: W * k, index: k })} keyExtractor={(f) => f.id} onMomentumScrollEnd={(e) => setI(Math.round(e.nativeEvent.contentOffset.x / W))} showsHorizontalScrollIndicator={false}
-        renderItem={({ item }) => <Press onPress={() => setUi(!ui)} scale={1}><View style={{ width: W, height: H, paddingTop: 104, paddingBottom: 116, backgroundColor: '#000' }}><PhImage uri={item.uri} direct style={{ width: '100%', height: '100%' } as any} contentFit="contain" /></View></Press>} />
+        renderItem={({ item }) => <Press onPress={() => setUi(!ui)} scale={1}><View style={{ width: W, height: H, backgroundColor: '#000' }}><PhImage uri={item.uri} direct style={{ width: '100%', height: '100%' } as any} contentFit="contain" /></View></Press>} />
       <Animated.View style={[st.viewerTop, { opacity: op }]} pointerEvents={ui ? 'auto' : 'none'}>
         <IconButton icon={ChevronLeft} deep onPress={() => nav.goBack()} />
         <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: '#fff', fontFamily: F.bodyB }}>{items[i]?.name}</Text><Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 12 }}>{[`${i + 1} / ${items.length}`, fmtFileSub(items[i])].filter(Boolean).join(' • ')}</Text></View>
@@ -195,6 +195,15 @@ export function ViewerScreen() {
   );
 }
 /* 20 — Lecteur vidéo : expo-video réel (autoplay après chargement, barre cliquable, mute, états loading/erreur) */
+/** variantes d'URI jouables : brut puis percent-encodé (noms français avec espaces/accents cassent AVPlayer) */
+const uriVariants = (u: string): string[] => {
+  const out = [u];
+  if (u.startsWith('file://')) {
+    try { const e = encodeURI(decodeURI(u)); if (e !== u) out.push(e); }
+    catch { try { const e = encodeURI(u); if (e !== u) out.push(e); } catch { /* URI déjà normalisée */ } }
+  }
+  return out;
+};
 export function VideoScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
   const { item } = route.params as { item: FileItem };
@@ -207,9 +216,20 @@ export function VideoScreen() {
   useEffect(() => {
     let alive = true;
     setState((s) => ({ ...s, loading: true, err: false }));
-    resolveMediaUri(item.uri)
-      .then((u) => { if (!alive) return; if (!u) throw new Error('uri'); return player.replaceAsync(u).then(() => { if (alive) player.play(); }); })
-      .catch(() => { if (alive) setState((s) => ({ ...s, err: true, loading: false })); });
+    (async () => {
+      const resolved = await resolveMediaUri(item.uri).catch(() => null);
+      const chain: string[] = [];
+      for (const c of [resolved, item.uri]) if (c) for (const v of uriVariants(c)) if (!chain.includes(v)) chain.push(v);
+      for (const u of chain) {
+        if (!alive) return;
+        try {
+          await player.replaceAsync(u);
+          if (alive) { player.play(); setState((s) => ({ ...s, loading: false })); }
+          return;
+        } catch { /* essaie l'URI suivante */ }
+      }
+      if (alive) setState((s) => ({ ...s, err: true, loading: false }));
+    })();
     return () => { alive = false; };
   }, [item.uri]);
   useEffect(() => {
@@ -340,7 +360,7 @@ export function MusicScreen() {
   const lib = useLibrary();
   const [q, setQ] = useState(''); const [widget, setWidget] = useState(false);
   const hs = useScrollHide();
-  useEffect(() => { lib.ensure(); }, []);
+  useEffect(() => { if (lib.perm === 'unknown') lib.ask(); else lib.ensure(); }, []);
   const list = lib.songs.filter((s) => s.title.toLowerCase().includes(q.toLowerCase()));
   const recent = list.slice(0, 4);
   const songSub = (s: Song) => [s.artist, s.duration > 0 ? fmtDur(s.duration) : ''].filter(Boolean).join(' • ');
@@ -559,12 +579,14 @@ export function BrowserScreen() {
           <View style={st.browHome}>
             <Image source={IMG.logoF} style={{ width: 96, height: 96, borderRadius: 24 }} />
             <Text style={{ fontFamily: F.title, fontSize: 22, color: C.ink }}>{t('browser.title')}</Text>
-            <Press onPress={() => inputRef.current?.focus()} style={{ alignSelf: 'stretch' }}>
-              <View style={st.browSearch}>
-                <Globe size={16} color={C.mute} />
-                <Text style={{ flex: 1, fontFamily: F.body, fontSize: 14, color: C.mute }} numberOfLines={1}>{t('browser.placeholder')}</Text>
-              </View>
-            </Press>
+            <View style={{ alignSelf: 'stretch' }}>
+              <Press onPress={() => inputRef.current?.focus()}>
+                <View style={st.browSearch}>
+                  <Globe size={16} color={C.mute} />
+                  <Text style={{ flex: 1, fontFamily: F.body, fontSize: 14, color: C.mute }} numberOfLines={1}>{t('browser.placeholder')}</Text>
+                </View>
+              </Press>
+            </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
               {QUICK.map(([n, u]) => (
                 <Press key={n} onPress={() => { setProg(0.05); upd(activeId, { url: u, live: u }); }}>
@@ -598,30 +620,30 @@ export function BrowserScreen() {
           <FlatList data={tabs} numColumns={2} keyExtractor={(x) => String(x.id)} columnWrapperStyle={{ gap: 12 }}
             contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 120 }}
             renderItem={({ item }) => (
-              <Press style={{ flex: 1 }} onPress={() => { setActiveId(item.id); setShowTabs(false); }}>
-                <View style={{ height: 176, borderRadius: 16, overflow: 'hidden', backgroundColor: '#fff', borderWidth: item.id === activeId ? 2 : 1, borderColor: item.id === activeId ? C.accent : 'rgba(255,255,255,.25)' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(11,42,107,.1)' }}>
-                    <Lock size={11} color={item.url ? C.green : C.mute} />
-                    <Text numberOfLines={1} style={{ flex: 1, fontFamily: F.body, fontSize: 11, color: C.mute }}>{shortUrl(item.live || item.url) || t('browser.newTab')}</Text>
-                    <Press hit={6} onPress={() => closeTab(item.id)}><X size={14} color={C.mute} /></Press>
+              <View style={{ flex: 1 }}>
+                <Press onPress={() => { setActiveId(item.id); setShowTabs(false); }}>
+                  <View style={{ height: 176, borderRadius: 16, overflow: 'hidden', backgroundColor: '#fff', borderWidth: item.id === activeId ? 2 : 1, borderColor: item.id === activeId ? C.accent : 'rgba(255,255,255,.25)' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(11,42,107,.1)' }}>
+                      <Lock size={11} color={item.url ? C.green : C.mute} />
+                      <Text numberOfLines={1} style={{ flex: 1, fontFamily: F.body, fontSize: 11, color: C.mute }}>{shortUrl(item.live || item.url) || t('browser.newTab')}</Text>
+                      <Press hit={6} onPress={() => closeTab(item.id)}><X size={14} color={C.mute} /></Press>
+                    </View>
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 }}>
+                      <Image source={IMG.logoF} style={{ width: 34, height: 34, borderRadius: 9 }} />
+                      <Text numberOfLines={2} style={{ fontFamily: F.bodyB, fontSize: 12, color: C.ink, textAlign: 'center' }}>{item.title || t('browser.newTab')}</Text>
+                    </View>
                   </View>
-                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 }}>
-                    <Image source={IMG.logoF} style={{ width: 34, height: 34, borderRadius: 9 }} />
-                    <Text numberOfLines={2} style={{ fontFamily: F.bodyB, fontSize: 12, color: C.ink, textAlign: 'center' }}>{item.title || t('browser.newTab')}</Text>
-                  </View>
-                </View>
-              </Press>
+                </Press>
+              </View>
             )} />
           <View style={{ position: 'absolute', left: 16, right: 16, bottom: Math.max(ins.bottom, 14), flexDirection: 'row', gap: 10 }}>
-            <Press onPress={newTab} style={{ flex: 1 }}>
-              <View style={{ height: 48, borderRadius: 24, backgroundColor: C.accent, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <Plus size={18} color="#fff" /><Text style={{ fontFamily: F.bodyB, fontSize: 14, color: '#fff' }}>{t('browser.newTab')}</Text>
-              </View>
-            </Press>
-            <Press onPress={() => { setTabs((ts) => ts.filter((x) => x.id === activeId)); setShowTabs(false); }}>
-              <View style={{ height: 48, paddingHorizontal: 18, borderRadius: 24, backgroundColor: 'rgba(255,255,255,.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,.35)', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontFamily: F.bodyB, fontSize: 14, color: '#fff' }}>{t('common.close')}</Text>
-              </View>
+            <View style={{ flex: 1 }}>
+              <Press onPress={newTab} style={{ height: 50, borderRadius: 25, backgroundColor: C.accent, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <Plus size={20} color="#fff" /><Text style={{ fontFamily: F.bodyB, fontSize: 15, color: '#fff' }}>{t('browser.newTab')}</Text>
+              </Press>
+            </View>
+            <Press onPress={() => { setTabs((ts) => ts.filter((x) => x.id === activeId)); setShowTabs(false); }} style={{ height: 50, paddingHorizontal: 20, borderRadius: 25, backgroundColor: 'rgba(255,255,255,.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,.35)', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: F.bodyB, fontSize: 15, color: '#fff' }}>{t('common.close')}</Text>
             </Press>
           </View>
         </View>
