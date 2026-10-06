@@ -16,19 +16,21 @@
 - Flows Nearby/Transfer/Incoming encore en démo (`DEMO_FILES`) — **Phase C**.
 
 ## En cours
-- Aucun agent en cours (OpenCode — fin de la session Phase B, commit/push en cours au moment de l'écriture).
+- Aucun agent en cours (OpenCode — session Phase B + CI terminées ; commit de ce journal en cours).
 
 ## Prochaine étape
-- Phase C : moteur réseau réel — `react-native-zeroconf` (mDNS `_fylio._tcp`) + `react-native-tcp-socket` (port 47811) dans `src/net/engine.ts` derrière le contrat `FylioEngine` existant, relais clé distant Supabase, puis brancher Nearby/Transfer/Incoming sur les vrais fichiers de `useLibrary()` ; ensuite Phase D (vérifier les runs CI IPA → artefact `fylio-ipa-unsigned` → Sideloadly).
+- **Phase D (partiellement faite)** : artefact `fylio-ipa-unsigned` (44 Mo, expire 2026-11-05) disponible sur la run https://github.com/mpoukiarmel21-beep/fylio-open-code/actions/runs/37441877557 → le télécharger et l'installer via Sideloadly (Apple ID, resign 7 j) pour valider Phase B sur iPhone.
+- **Phase C** : moteur réseau réel — `react-native-zeroconf` (mDNS `_fylio._tcp`) + `react-native-tcp-socket` (port 47811) dans `src/net/engine.ts` derrière le contrat `FylioEngine` existant, relais clé distant Supabase, puis brancher Nearby/Transfer/Incoming sur les vrais fichiers de `useLibrary()`.
 
 ## Blocages / risques
 - Aucun Mac local : tout le build iOS passe par GitHub Actions → IPA non signée → Sideloadly (Apple ID gratuit, resign 7 jours).
-- **Vérifier les 2 runs CI IPA lancés** (`ios-ipa.yml`) : compatibilité natives `react-native-pdf`/`react-native-blob-util` avec Expo 57 via prebuild.
+- **CI en vert** (run 37441877557, 2026-10-06) : runner `macos-26` (Xcode 26.6 / Swift 6.3) — macOS 15 + Xcode 26.2/26.3 échoue sur `expo-modules-jsi` (`SWIFT_RETURNS_RETAINED` sur constructeurs = erreur Swift 6.2.x, voir expo/expo#50067) et Xcode 16.4 échoue sur `swift-tools-version: 6.2`. **Ne pas repasser en `macos-15`.**
 - `ph://` + expo-image sur IDs photo complets (`ph://UUID/L0/001`) incertain → mitigé par `PhImage` fallback file:// ; gate iCloud évite le téléchargement massif.
 - **Audio iOS media-library : `Asset.getUri()` throw** (UriExtractor audio non supporté) → chansons média iOS non jouables, catch silencieux ; fallback = mp3 importés (file://).
 - Tailles médias indisponibles (size=0 → UI affiche `W×H` + durée via `fmtFileSub`).
 - `react-native-track-player` V5 = licence commerciale ; utiliser impérativement **@4.1.2 (Apache-2.0)** si adoption un jour.
 
 ## Journal
+- **2026-10-06 (fin de session) — OpenCode** : **CI en vert** — run 37441877557 (macos-26 / Xcode 26.6 / Swift 6.3) → artefact `fylio-ipa-unsigned` (44 Mo, expire 2026-11-05). Fixes successifs : (1) Xcode 26.3 sur macos-15 → erreur `SWIFT_RETURNS_RETAINED` sur les constructeurs de `RuntimeScheduler.h` (bug upstream expo-modules-jsi 57.1.x, Swift 6.2.x, expo/expo#50067) ; (2) bascule `runs-on: macos-26` (Swift 6.3.3 = warning au lieu d'erreur) → build complet (prebuild, pod install, archive, .ipa).
 - **2026-10-06 (soir) — OpenCode** : **Phase B terminée** — `library.tsx` (indexation réelle + import sandbox), `LibraryProvider` monté dans App, `mock.ts` enrichi (`fmtFileSub`), `send.tsx` (PhImage/FileThumb/SendSelect réels), `media.tsx` entièrement rebranché (Fichiers/Dossier/Galerie/Visionneuse/Vidéo expo-video/PDF react-native-pdf/Musique expo-audio avec lock-screen), i18n `lib`+`music.count` ×9 locales. Vérifs : `npx tsc --noEmit` OK, `expo export --platform android` OK (5.6 MB), `expo export --platform ios` OK. Commit/push de la session.
 - **2026-10-06 — OpenCode** : analyse du zip de référence (`fylio_app.zip`), recherche GitHub des libs (comptes/licences), plan A→D rédigé et validé, projet copié dans `D:\FYLIO open code`, git init + commit initial, repo public `fylio-open-code` créé et pushé ; CI `ios-ipa.yml` ajoutée (2 runs lancés).
