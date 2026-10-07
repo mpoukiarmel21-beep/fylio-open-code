@@ -62,7 +62,7 @@ export function GlassNav({ active, onTab, cable, onCharger, chargerRef, tabRefs 
             <View key={tb.key} ref={tabRefs?.[tb.key]} collapsable={false} style={{ flex: 1 }}>
               <Press onPress={() => onTab(tb.key)} style={st.tab}>
                 <Ico size={24} color={on ? ICON_ON : ICON_OFF} strokeWidth={on ? 2.6 : 2.4} />
-                <Text style={{ fontFamily: on ? F.bodyX : F.bodyB, fontSize: 10, color: on ? ICON_ON : ICON_OFF }}>{t(tb.label)}</Text>
+                <Text style={{ fontFamily: on ? F.bodyX : F.bodyB, fontSize: 9, color: on ? ICON_ON : ICON_OFF }}>{t(tb.label)}</Text>
               </Press>
             </View>
           );
@@ -87,7 +87,7 @@ const st = StyleSheet.create({
   nav: { flex: 1, height: NAV_H, borderRadius: R.nav, overflow: 'hidden', flexDirection: 'row', borderWidth: 1, borderColor: 'rgba(11,42,107,.16)', shadowColor: '#166AB1', shadowOpacity: 0.2, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
   ind: { position: 'absolute', top: 6, bottom: 6, borderRadius: 26, overflow: 'hidden' },
   bar: { position: 'absolute', bottom: 5, alignSelf: 'center', width: 20, height: 3, borderRadius: 2, backgroundColor: C.accent },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 4, paddingTop: 16 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1, paddingHorizontal: 4, paddingTop: 28 },
   charger: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
   chargerIn: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(11,42,107,.16)' },
   halo: { position: 'absolute', width: 70, height: 70, borderRadius: 35, backgroundColor: '#54ffbd' },

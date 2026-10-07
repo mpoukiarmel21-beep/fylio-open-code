@@ -252,29 +252,35 @@ const SAMPLE_VIDEOS = [
 ];
 /** Barre de progression interactive : tap ou glissé du pouce → avancer/reculer directement.
  *  Utilisée par le lecteur vidéo et par le lecteur de musique. */
-function Scrubber({ pos, dur, onSeek, trackH = 4, thumb = true }: { pos: number; dur: number; onSeek: (sec: number) => void; trackH?: number; thumb?: boolean }) {
+function Scrubber({ pos, dur, onSeek, trackH = 4, thumb = true, fill = '#fff' }: { pos: number; dur: number; onSeek: (sec: number) => void; trackH?: number; thumb?: boolean; fill?: string }) {
   const [w, setW] = useState(0);
+  const [drag, setDrag] = useState<number | null>(null);
   const wRef = useRef(0); wRef.current = w;
   const durRef = useRef(dur); durRef.current = dur;
   const onSeekRef = useRef(onSeek); onSeekRef.current = onSeek;
-  const toSec = (locX: number) => { const W = wRef.current; if (!W) return; onSeekRef.current(Math.max(0, Math.min(1, locX / W)) * durRef.current); };
+  const draggingRef = useRef(false);
+  const toSec = (locX: number) => { const W = wRef.current; if (!W) return 0; return Math.max(0, Math.min(1, locX / W)) * durRef.current; };
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (e) => toSec(e.nativeEvent.locationX),
-      onPanResponderMove: (e) => toSec(e.nativeEvent.locationX),
-      onPanResponderTerminate: () => {},
-      onPanResponderRelease: () => {},
+      /* Tap : seek immédiat. Glissé : on ne fais que déplacer le curseur en local (aucun seek
+       * pendant le mouvement → lecture fluide, le player n'est pas « calé » par des seeks en rafale),
+       * puis on applique UN seek au relâchement. */
+      onPanResponderGrant: (e) => { draggingRef.current = true; const s = toSec(e.nativeEvent.locationX); setDrag(s); onSeekRef.current(s); },
+      onPanResponderMove: (e) => { if (draggingRef.current) setDrag(toSec(e.nativeEvent.locationX)); },
+      onPanResponderRelease: () => { if (draggingRef.current) { draggingRef.current = false; setDrag(null); } },
+      onPanResponderTerminate: () => { draggingRef.current = false; setDrag(null); },
     })
   ).current;
-  const pct = Math.min(100, dur > 0 ? (pos / dur) * 100 : 0);
+  const pct = (v: number) => Math.min(100, Math.max(0, dur > 0 ? (v / dur) * 100 : 0));
+  const display = drag != null ? pct(drag) : pct(pos);
   return (
     <View {...pan.panHandlers} onLayout={(e) => setW(e.nativeEvent.layout.width)} style={{ paddingVertical: 10 }}>
       <View style={{ height: trackH, borderRadius: trackH / 2, backgroundColor: 'rgba(255,255,255,.3)' }}>
-        <View style={{ width: `${pct}%`, height: trackH, borderRadius: trackH / 2, backgroundColor: '#fff' }} />
+        <View style={{ width: `${display}%`, height: trackH, borderRadius: trackH / 2, backgroundColor: fill }} />
       </View>
-      {thumb && <View style={{ position: 'absolute', top: 10 + trackH / 2 - 6, left: `${pct}%`, width: 12, height: 12, marginLeft: -6, borderRadius: 6, backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 3 }} />}
+      {thumb && <View style={{ position: 'absolute', top: 10 + trackH / 2 - 6, left: `${display}%`, width: 12, height: 12, marginLeft: -6, borderRadius: 6, backgroundColor: fill, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 3 }} />}
     </View>
   );
 }
@@ -323,16 +329,23 @@ export function VideoScreen() {
     }
   };
   /** « Précédent / Suivant » : passe directement à la vidéo précédente / suivante de l'onglet
-   *  Galerie. S'il n'y a qu'une seule vidéo, revient à avancer/reculer de 10 s via la timeline. */
+   *  Galerie. S'il n'y a qu'une seule vidéo, revient à avancer/reculer de 10 s via la timeline.
+   *  En mode audio, on change de vidéo SANS couper le mode audio : l'audio de la nouvelle vidéo
+   *  est relancé via le lecteur global (widget musique à l'écran verrouillé mise à jour). */
   const goVideo = (dir: -1 | 1) => {
     const list = lib.videos;
     if (list.length < 2) { seek(dir * 10); return; }
     const i = list.findIndex((v) => v.id === item.id);
     const j = (Math.max(0, i) + dir + list.length) % list.length;
     if (i >= 0 && list[j].id === item.id) { seek(dir * 10); return; }
-    if (audioMode) { try { if (pl.playing) pl.toggle(); } catch { /* déjà coupé */ } setAudioMode(false); }
     setRecorded(false);
-    setMuted(false);
+    if (audioMode) {
+      try { if (String(player.status) === 'readyToPlay') player.pause(); } catch { /* déjà en pause */ }
+      pl.play({ id: 'video-' + encodeURIComponent(list[j].uri ?? ''), title: list[j].name, artist: t('video.audioMode'), duration: list[j].duration || 0, uri: list[j].uri, name: list[j].name });
+      setAudioMode(true);
+    } else {
+      setMuted(false);
+    }
     nav.setParams({ item: list[j] });
   };
   /** Avance dans la chaîne de candidats (fichier réel → variantes → vidéos de démo). Bornée par la longueur de la chaîne. */
@@ -410,13 +423,25 @@ export function VideoScreen() {
           </View>
         )}
         {audioMode && (
-          <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,.35)' }}>
-            <View style={{ alignItems: 'center', gap: 8 }}>
-              <Headphones size={40} color="#fff" />
-              <Text style={{ color: '#fff', fontFamily: F.bodyB, fontSize: 14 }}>{t('video.audioMode')}</Text>
-              <Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 12 }}>{pl.playing ? t('video.audioPlaying') : t('video.audioPaused')}</Text>
+          <>
+            <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,.35)' }}>
+              <View style={{ alignItems: 'center', gap: 8 }}>
+                <Headphones size={40} color="#fff" />
+                <Text style={{ color: '#fff', fontFamily: F.bodyB, fontSize: 14 }}>{t('video.audioMode')}</Text>
+                <Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 12 }}>{pl.playing ? t('video.audioPlaying') : t('video.audioPaused')}</Text>
+              </View>
             </View>
-          </View>
+            <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 14, paddingBottom: 44 }}>
+              <GlassCard deep padding={10}>
+                <Text style={{ color: 'rgba(255,255,255,.65)', fontFamily: F.bodyB, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center', marginBottom: 6 }}>{t('video.audioNav')}</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 26 }}>
+                  <Press onPress={() => goVideo(-1)} hit={8}><SkipBack size={26} color="#fff" strokeWidth={2.4} /></Press>
+                  <Press onPress={pl.toggle} hit={8}><View style={st.playBig}>{pl.playing ? <Pause size={26} color={C.ink} fill={C.ink} /> : <Play size={26} color={C.ink} fill={C.ink} />}</View></Press>
+                  <Press onPress={() => goVideo(1)} hit={8}><SkipForward size={26} color="#fff" strokeWidth={2.4} /></Press>
+                </View>
+              </GlassCard>
+            </View>
+          </>
         )}
       </View>
       <View style={st.viewerTop}>
@@ -433,19 +458,21 @@ export function VideoScreen() {
           <Press onPress={goPip} hit={8}><PictureInPicture2 size={22} color="#fff" /></Press>
         </View>
       </View>
-      <View style={{ position: 'absolute', left: 14, right: 14, bottom: 40 }}>
-        <GlassCard deep padding={14}>
-          <Scrubber pos={state.pos} dur={dur} onSeek={seekTo} />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}><Text style={T.body(true)}>{fmtDur(state.pos)}</Text><Text style={T.body(true)}>{fmtDur(dur)}</Text></View>
-          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 24, marginTop: 8 }}>
-            <Press onPress={toggleMute} hit={8}>{muted ? <VolumeX size={20} color={muted ? '#FF7AA2' : 'rgba(255,255,255,.8)'} /> : <Volume2 size={20} color="rgba(255,255,255,.85)" />}</Press>
-            <Press onPress={() => goVideo(-1)}><SkipBack size={26} color="#fff" /></Press>
-            <Press onPress={toggle}><View style={st.playBig}>{state.playing ? <Pause size={26} color={C.ink} fill={C.ink} /> : <Play size={26} color={C.ink} fill={C.ink} />}</View></Press>
-            <Press onPress={() => goVideo(1)}><SkipForward size={26} color="#fff" /></Press>
-            <View style={{ width: 20 }} />
-          </View>
-        </GlassCard>
-      </View>
+      {!audioMode && (
+        <View style={{ position: 'absolute', left: 14, right: 14, bottom: 40 }}>
+          <GlassCard deep padding={14}>
+            <Scrubber pos={state.pos} dur={dur} onSeek={seekTo} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}><Text style={T.body(true)}>{fmtDur(state.pos)}</Text><Text style={T.body(true)}>{fmtDur(dur)}</Text></View>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 24, marginTop: 8 }}>
+              <Press onPress={toggleMute} hit={8}>{muted ? <VolumeX size={20} color={muted ? '#FF7AA2' : 'rgba(255,255,255,.8)'} /> : <Volume2 size={20} color="rgba(255,255,255,.85)" />}</Press>
+              <Press onPress={() => goVideo(-1)}><SkipBack size={26} color="#fff" /></Press>
+              <Press onPress={toggle}><View style={st.playBig}>{state.playing ? <Pause size={26} color={C.ink} fill={C.ink} /> : <Play size={26} color={C.ink} fill={C.ink} />}</View></Press>
+              <Press onPress={() => goVideo(1)}><SkipForward size={26} color="#fff" /></Press>
+              <View style={{ width: 20 }} />
+            </View>
+          </GlassCard>
+        </View>
+      )}
     </View>
   );
 }
