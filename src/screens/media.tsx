@@ -1,6 +1,6 @@
 /** 16 Fichiers, 17 Dossier, 18 Galerie, 19 Visionneuse façon Photos, 20 Vidéo, 21 Musique (+ widget lock-screen), 22 Lecteur plein écran, PDF, 23 Navigateur. */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, Animated, FlatList, Dimensions, TextInput, Modal, Pressable, ActivityIndicator, Keyboard } from 'react-native';
+import { View, Text, Image, ScrollView, StyleSheet, Animated, FlatList, Dimensions, TextInput, Modal, Pressable, ActivityIndicator, Keyboard, PanResponder } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -250,6 +250,34 @@ const SAMPLE_VIDEOS = [
   'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
   'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8',
 ];
+/** Barre de progression interactive : tap ou glissé du pouce → avancer/reculer directement.
+ *  Utilisée par le lecteur vidéo et par le lecteur de musique. */
+function Scrubber({ pos, dur, onSeek, trackH = 4, thumb = true }: { pos: number; dur: number; onSeek: (sec: number) => void; trackH?: number; thumb?: boolean }) {
+  const [w, setW] = useState(0);
+  const wRef = useRef(0); wRef.current = w;
+  const durRef = useRef(dur); durRef.current = dur;
+  const onSeekRef = useRef(onSeek); onSeekRef.current = onSeek;
+  const toSec = (locX: number) => { const W = wRef.current; if (!W) return; onSeekRef.current(Math.max(0, Math.min(1, locX / W)) * durRef.current); };
+  const pan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => toSec(e.nativeEvent.locationX),
+      onPanResponderMove: (e) => toSec(e.nativeEvent.locationX),
+      onPanResponderTerminate: () => {},
+      onPanResponderRelease: () => {},
+    })
+  ).current;
+  const pct = Math.min(100, dur > 0 ? (pos / dur) * 100 : 0);
+  return (
+    <View {...pan.panHandlers} onLayout={(e) => setW(e.nativeEvent.layout.width)} style={{ paddingVertical: 10 }}>
+      <View style={{ height: trackH, borderRadius: trackH / 2, backgroundColor: 'rgba(255,255,255,.3)' }}>
+        <View style={{ width: `${pct}%`, height: trackH, borderRadius: trackH / 2, backgroundColor: '#fff' }} />
+      </View>
+      {thumb && <View style={{ position: 'absolute', top: 10 + trackH / 2 - 6, left: `${pct}%`, width: 12, height: 12, marginLeft: -6, borderRadius: 6, backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 3 }} />}
+    </View>
+  );
+}
 export function VideoScreen() {
   const nav = useNavigation<Nav>(); const route = useRoute<any>(); const { t } = useTranslation();
   const { item } = route.params as { item: FileItem };
@@ -263,7 +291,6 @@ export function VideoScreen() {
   const [recorded, setRecorded] = useState(false);
   const [state, setState] = useState({ pos: 0, dur: item.duration ?? 0, playing: false, loading: true, err: false });
   const [muted, setMuted] = useState(false);
-  const [trackW, setTrackW] = useState(1);
   const stateRef = useRef(state);
   const chainRef = useRef<string[]>([]);
   const idxRef = useRef(-1);
@@ -294,6 +321,19 @@ export function VideoScreen() {
       void lib.saveSong({ id: 'video-' + encodeURIComponent(item.uri ?? ''), title: item.name, artist: t('video.audioMode'), duration: stateRef.current.dur || item.duration || 0, uri: item.uri, name: item.name });
       setRecorded(true);
     }
+  };
+  /** « Précédent / Suivant » : passe directement à la vidéo précédente / suivante de l'onglet
+   *  Galerie. S'il n'y a qu'une seule vidéo, revient à avancer/reculer de 10 s via la timeline. */
+  const goVideo = (dir: -1 | 1) => {
+    const list = lib.videos;
+    if (list.length < 2) { seek(dir * 10); return; }
+    const i = list.findIndex((v) => v.id === item.id);
+    const j = (Math.max(0, i) + dir + list.length) % list.length;
+    if (i >= 0 && list[j].id === item.id) { seek(dir * 10); return; }
+    if (audioMode) { try { if (pl.playing) pl.toggle(); } catch { /* déjà coupé */ } setAudioMode(false); }
+    setRecorded(false);
+    setMuted(false);
+    nav.setParams({ item: list[j] });
   };
   /** Avance dans la chaîne de candidats (fichier réel → variantes → vidéos de démo). Bornée par la longueur de la chaîne. */
   const tryNext = async () => {
@@ -370,43 +410,38 @@ export function VideoScreen() {
           </View>
         )}
         {audioMode && (
-          <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 100, paddingHorizontal: 30, backgroundColor: 'rgba(0,0,0,.45)' }}>
+          <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,.35)' }}>
             <View style={{ alignItems: 'center', gap: 8 }}>
               <Headphones size={40} color="#fff" />
               <Text style={{ color: '#fff', fontFamily: F.bodyB, fontSize: 14 }}>{t('video.audioMode')}</Text>
               <Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 12 }}>{pl.playing ? t('video.audioPlaying') : t('video.audioPaused')}</Text>
             </View>
-            <View style={{ alignItems: 'center', gap: 10 }}>
-              <Pressable onPress={onRecord} style={{ width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(10,123,255,.35)', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 }}>
-                <Download size={26} color={recorded ? '#29B473' : '#0A7BFF'} strokeWidth={2.4} />
-              </Pressable>
-              <Text style={{ color: '#fff', fontFamily: F.bodyB, fontSize: 13 }}>{recorded ? t('video.saved') : t('video.record')}</Text>
-            </View>
-            {recorded && <Text style={{ color: 'rgba(255,255,255,.75)', fontFamily: F.body, fontSize: 12, textAlign: 'center' }}>{t('video.saveHint')}</Text>}
           </View>
         )}
       </View>
       <View style={st.viewerTop}>
         <IconButton icon={ChevronLeft} deep onPress={() => nav.goBack()} />
         <Text style={{ flex: 1, textAlign: 'center', color: '#fff', fontFamily: F.bodyB }} numberOfLines={1}>{item.name}</Text>
-        <View style={{ flexDirection: 'row', gap: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          {audioMode && (
+            <Press onPress={onRecord} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 16, backgroundColor: recorded ? 'rgba(41,180,115,.3)' : 'rgba(255,255,255,.18)' }}>
+              <Download size={15} color={recorded ? '#8DF5C9' : '#fff'} />
+              <Text style={{ color: '#fff', fontFamily: F.bodyB, fontSize: 11 }}>{recorded ? t('video.saved') : t('video.record')}</Text>
+            </Press>
+          )}
           <Press onPress={toggleAudio} hit={8}><Headphones size={22} color="#fff" fill={audioMode ? '#7DD7FF' : 'none'} /></Press>
           <Press onPress={goPip} hit={8}><PictureInPicture2 size={22} color="#fff" /></Press>
         </View>
       </View>
       <View style={{ position: 'absolute', left: 14, right: 14, bottom: 40 }}>
         <GlassCard deep padding={14}>
-          <Pressable onPress={(e) => seekTo((e.nativeEvent.locationX / Math.max(1, trackW)) * dur)} style={{ paddingVertical: 6 }}>
-            <View onLayout={(e) => setTrackW(e.nativeEvent.layout.width)} style={st.track}>
-              <View style={[st.fill, { width: `${Math.min(100, (state.pos / dur) * 100)}%` }]} />
-            </View>
-          </Pressable>
+          <Scrubber pos={state.pos} dur={dur} onSeek={seekTo} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}><Text style={T.body(true)}>{fmtDur(state.pos)}</Text><Text style={T.body(true)}>{fmtDur(dur)}</Text></View>
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 24, marginTop: 8 }}>
             <Press onPress={toggleMute} hit={8}>{muted ? <VolumeX size={20} color={muted ? '#FF7AA2' : 'rgba(255,255,255,.8)'} /> : <Volume2 size={20} color="rgba(255,255,255,.85)" />}</Press>
-            <Press onPress={() => seek(-10)}><SkipBack size={26} color="#fff" /></Press>
+            <Press onPress={() => goVideo(-1)}><SkipBack size={26} color="#fff" /></Press>
             <Press onPress={toggle}><View style={st.playBig}>{state.playing ? <Pause size={26} color={C.ink} fill={C.ink} /> : <Play size={26} color={C.ink} fill={C.ink} />}</View></Press>
-            <Press onPress={() => seek(10)}><SkipForward size={26} color="#fff" /></Press>
+            <Press onPress={() => goVideo(1)}><SkipForward size={26} color="#fff" /></Press>
             <View style={{ width: 20 }} />
           </View>
         </GlassCard>
@@ -446,7 +481,7 @@ export function PdfScreen() {
 }
 
 /* 21 — Musique (fond foncé) : recherche, bloc Musique récente, bloc Toutes les musiques, mini-lecteur ; 22 — Lecteur plein écran ; 22b — aperçu widget lock-screen */
-export const PlayerCtx = React.createContext<{ song: Song | null; playing: boolean; pos: number; dur: number; play: (s: Song) => void; toggle: () => void; next: () => void; prev: () => void } | null>(null);
+export const PlayerCtx = React.createContext<{ song: Song | null; playing: boolean; pos: number; dur: number; play: (s: Song) => void; toggle: () => void; next: () => void; prev: () => void; seekTo: (sec: number) => void } | null>(null);
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const { songs } = useLibrary();
   const player = useAudioPlayer(null, { updateInterval: 500 });
@@ -475,7 +510,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const done = status.didJustFinish;
   useEffect(() => { if (done) next(); }, [done]);
   const toggle = () => { if (!song) return; if (status.playing) player.pause(); else player.play(); };
-  return <PlayerCtx.Provider value={{ song, playing: !!status.playing && !!song, pos: Math.floor(status.currentTime || 0), dur: status.duration || 0, play, toggle, next, prev }}>{children}</PlayerCtx.Provider>;
+  const seekTo = (sec: number) => { try { player.currentTime = Math.max(0, sec); } catch { /* seek indisponible */ } };
+  return <PlayerCtx.Provider value={{ song, playing: !!status.playing && !!song, pos: Math.floor(status.currentTime || 0), dur: status.duration || 0, play, toggle, next, prev, seekTo }}>{children}</PlayerCtx.Provider>;
 }
 export const usePlayer = () => { const v = React.useContext(PlayerCtx); if (!v) throw new Error('PlayerProvider'); return v; };
 const Cover = ({ s, size = 44 }: { s: Song; size?: number }) => <LinearGradient colors={[`hsl(${(s.id.charCodeAt(1) * 47) % 360}, 75%, 65%)`, `hsl(${(s.id.charCodeAt(1) * 47 + 40) % 360}, 80%, 45%)`]} style={{ width: size, height: size, borderRadius: size * 0.25, alignItems: 'center', justifyContent: 'center' }}><Music size={size * 0.45} color="rgba(255,255,255,.9)" /></LinearGradient>;
@@ -545,7 +581,7 @@ export function MiniPlayer({ onOpen }: { onOpen: () => void }) {
             <Press onPress={pl.toggle} hit={8}>{pl.playing ? <Pause size={24} color="#fff" fill="#fff" /> : <Play size={24} color="#fff" fill="#fff" />}</Press>
             <Press onPress={pl.next} hit={8}><SkipForward size={22} color="#fff" /></Press>
           </View>
-          <View style={[st.track, { height: 3, marginTop: 8, backgroundColor: 'rgba(255,255,255,.25)' }]}><View style={[st.fill, { width: `${Math.min(100, (pl.pos / dur) * 100)}%`, backgroundColor: '#fff' }]} /></View>
+          <Scrubber pos={pl.pos} dur={dur} onSeek={pl.seekTo} trackH={3} thumb={false} />
         </GlassCard>
       </Press>
     </View>
@@ -572,7 +608,7 @@ export function PlayerScreen() {
         <Text style={[T.h1(true), { fontSize: 24, marginTop: 24 }]}>{s.title}</Text>
         {!!s.artist && <Text style={T.lead(true)}>{s.artist}</Text>}
         <GlassCard deep padding={14} style={{ alignSelf: 'stretch', marginTop: 22 }}>
-          <View style={[st.track, { backgroundColor: 'rgba(255,255,255,.3)' }]}><View style={[st.fill, { width: `${Math.min(100, (pl.pos / dur) * 100)}%`, backgroundColor: '#fff' }]} /></View>
+          <Scrubber pos={pl.pos} dur={dur} onSeek={pl.seekTo} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}><Text style={[T.strong(true), { fontSize: 13 }]}>{fmtDur(pl.pos)}</Text><Text style={[T.strong(true), { fontSize: 13 }]}>-{fmtDur(Math.max(0, dur - pl.pos))}</Text></View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, paddingHorizontal: 6 }}>
             <Press hit={8}><Shuffle size={20} color="rgba(255,255,255,.8)" /></Press>

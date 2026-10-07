@@ -95,18 +95,18 @@ export function WhoScreen() {
   const app = useApp();
   const [av, setAv] = useState(app.avatar);
   const [name, setName] = useState(app.firstName);
-  const size = (W - S.pad * 2 - 24) / 3;
+  const size = (W - S.pad * 2 - 14) / 3;
   const go = () => { app.set({ avatar: av, firstName: name.trim() || 'Chris' }); route.params?.fromSettings ? nav.goBack() : nav.navigate('Perms'); };
   return (
     <Screen bg={3}>
       <ScrollView contentContainerStyle={{ padding: S.pad, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <FadeIn><Text style={[T.h1(true), { textAlign: 'center' }]}>{t('who.title')}</Text><Text style={[T.lead(true), { textAlign: 'center', marginBottom: 16 }]}>{t('who.subtitle')}</Text></FadeIn>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
           {IMG.avatars.map((src, i) => (
             <FadeIn key={i} delay={80 + i * 50}>
               <Press onPress={() => setAv(i)} scale={0.94}>
                 <View style={[st.avWrap, { width: size, height: size }, av === i && st.avOn]}>
-                  <Image source={src} style={{ width: size - 16, height: size - 16 }} resizeMode="contain" />
+                  <Image source={src} style={{ width: size - 10, height: size - 10 }} resizeMode="contain" />
                   {av === i && <View style={[st.chk, { position: 'absolute', top: 8, right: 8 }]}><Check size={14} color="#fff" strokeWidth={3} /></View>}
                 </View>
               </Press>
@@ -118,9 +118,9 @@ export function WhoScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><Camera size={18} color="#fff" /><Text style={{ color: '#fff', fontFamily: F.bodyB, fontSize: 15 }}>{t('who.myPhoto')}</Text></View>
           </GlassCard>
         </Press>
-        <Text style={[T.strong(true), { marginTop: 18, marginBottom: 6 }]}>{t('who.firstName')}</Text>
+        <Text style={[T.strong(true), { marginTop: 20, marginBottom: 8 }]}>{t('who.firstName')}</Text>
         <GlassCard deep padding={0} radius={R.pill}>
-          <TextInput value={name} onChangeText={setName} placeholder={t('who.placeholder')} placeholderTextColor="rgba(255,255,255,.65)" style={{ height: 50, paddingHorizontal: 18, color: '#fff', fontFamily: F.bodyB, fontSize: 16 }} />
+          <TextInput value={name} onChangeText={setName} placeholder={t('who.placeholder')} placeholderTextColor="rgba(255,255,255,.65)" style={{ height: 58, paddingHorizontal: 20, color: '#fff', fontFamily: F.bodyB, fontSize: 18 }} />
         </GlassCard>
         <GlassButton label={t('who.enter')} icon={ChevronRight} style={{ marginTop: 18 }} onPress={go} />
       </ScrollView>
