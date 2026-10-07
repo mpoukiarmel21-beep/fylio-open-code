@@ -6,6 +6,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { WebView } from 'react-native-webview';
 import Pdf from 'react-native-pdf';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
@@ -92,7 +93,12 @@ export function FilesScreen() {
         </View>
       </ScrollView>
       <Animated.View style={[st.hdr, { top: -ins.top, paddingTop: ins.top, backgroundColor: hs.bar.backgroundColor }]} pointerEvents="box-none">
-        <Header {...hp} />
+        <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, opacity: hs.bar.opacity }]}>
+          <BlurView intensity={48} tint="light" style={StyleSheet.absoluteFill} />
+        </Animated.View>
+        <Animated.View style={hs.head}>
+          <Header {...hp} />
+        </Animated.View>
       </Animated.View>
     </Screen>
   );
@@ -177,7 +183,12 @@ export function GalleryScreen() {
         ))}
       </ScrollView>
       <Animated.View style={[st.hdr, { top: -ins.top, paddingTop: ins.top, backgroundColor: hs.bar.backgroundColor }]} pointerEvents="box-none">
-        <Header {...hp} />
+        <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, opacity: hs.bar.opacity }]}>
+          <BlurView intensity={48} tint="light" style={StyleSheet.absoluteFill} />
+        </Animated.View>
+        <Animated.View style={hs.head}>
+          <Header {...hp} />
+        </Animated.View>
       </Animated.View>
     </Screen>
   );
@@ -538,6 +549,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (done) next(); }, [done]);
   const toggle = () => { if (!song) return; if (status.playing) player.pause(); else player.play(); };
   const seekTo = (sec: number) => { try { player.currentTime = Math.max(0, sec); } catch { /* seek indisponible */ } };
+  /** Widget natif (Control Center iOS + écran verrouillé) : maintenu actif en continu pendant la
+   *  lecture — titre/artiste et boutons seek transmis toutes les ~2 s. Ça garantit que le widget
+   *  apparaît quand on transforme une vidéo en audio, qu'on éteint/verrouille le téléphone, et que
+   *  la barre de progression (curseur) reste utilisable dans le widget. */
+  const lockTick = Math.floor((status.currentTime || 0) / 2);
+  useEffect(() => {
+    if (!song) return;
+    try { player.setActiveForLockScreen(true, { title: song.title, artist: song.artist || undefined }, { showSeekBackward: true, showSeekForward: true }); } catch { /* lock-screen non supporté */ }
+  }, [song, lockTick]);
   return <PlayerCtx.Provider value={{ song, playing: !!status.playing && !!song, pos: Math.floor(status.currentTime || 0), dur: status.duration || 0, play, toggle, next, prev, seekTo }}>{children}</PlayerCtx.Provider>;
 }
 export const usePlayer = () => { const v = React.useContext(PlayerCtx); if (!v) throw new Error('PlayerProvider'); return v; };

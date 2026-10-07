@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Image, ScrollView, StyleSheet, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -149,8 +150,13 @@ export function HomeScreen() {
         )}
       </ScrollView>
       <Animated.View style={[st.hdr, { top: -ins.top, paddingTop: ins.top, backgroundColor: hs.bar.backgroundColor }]} pointerEvents="box-none">
-        <Header name={app.firstName || 'Chris'} avatar={avatar} hasNotif={hasNotif} refs={{ browser: r.browser, notifs: r.notifs, settings: r.settings }}
-          onEdit={() => nav.navigate('Who', { fromSettings: true })} onBrowser={() => nav.navigate('Browser')} onNotifs={() => nav.navigate('Notifications')} onSettings={() => nav.navigate('Settings')} />
+        <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, opacity: hs.bar.opacity }]}>
+          <BlurView intensity={48} tint="light" style={StyleSheet.absoluteFill} />
+        </Animated.View>
+        <Animated.View style={hs.head}>
+          <Header name={app.firstName || 'Chris'} avatar={avatar} hasNotif={hasNotif} refs={{ browser: r.browser, notifs: r.notifs, settings: r.settings }}
+            onEdit={() => nav.navigate('Who', { fromSettings: true })} onBrowser={() => nav.navigate('Browser')} onNotifs={() => nav.navigate('Notifications')} onSettings={() => nav.navigate('Settings')} />
+        </Animated.View>
       </Animated.View>
       <Tour visible={tour} steps={steps} onDone={() => { setTour(false); app.set({ tourDone: true }); }} />
     </Screen>

@@ -145,13 +145,15 @@ export function useScrollHide() {
   return { onScroll, wrap };
 }
 
-/* ---------- En-tête natif iOS : barre épinglée + grand titre qui monte vers les
- *  icônes de statut (batterie/découpage) et disparaît vers le haut au scroll. ---------- */
+/* ---------- En-tête natif iOS : grand titre qui monte vers les icônes de statut et disparaît ;
+ *  la BANDE d'en-tête (avatar + nom + icônes) glisse vers le haut et s'estompe au scroll de
+ *  façon « native Apple » (comme si elle disparaissait), puis réapparaît en remontant en haut. ---------- */
 export function useHeaderCollapse() {
   const y = useRef(new Animated.Value(0)).current;
   const onScroll = (e: any) => { const v = e?.nativeEvent?.contentOffset?.y ?? 0; y.setValue(Math.max(0, v)); };
   const bar: any = {
-    backgroundColor: y.interpolate({ inputRange: [0, 110], outputRange: ['rgba(238,247,255,0)', 'rgba(238,247,255,.86)'], extrapolate: 'clamp' }),
+    opacity: y.interpolate({ inputRange: [0, 110], outputRange: [0, 1], extrapolate: 'clamp' }),
+    backgroundColor: y.interpolate({ inputRange: [0, 110], outputRange: ['rgba(238,247,255,0)', 'rgba(238,247,255,.9)'], extrapolate: 'clamp' }),
   };
   const hero: any = {
     transform: [
@@ -160,7 +162,11 @@ export function useHeaderCollapse() {
     ],
     opacity: y.interpolate({ inputRange: [60, 140], outputRange: [1, 0], extrapolate: 'clamp' }),
   };
-  return { onScroll, bar, hero };
+  const head: any = {
+    transform: [{ translateY: y.interpolate({ inputRange: [0, 130], outputRange: [0, -72], extrapolate: 'clamp' }) }],
+    opacity: y.interpolate({ inputRange: [0, 120], outputRange: [1, 0], extrapolate: 'clamp' }),
+  };
+  return { onScroll, bar, hero, head };
 }
 
 /* ---------- Header utilisateur ---------- */
