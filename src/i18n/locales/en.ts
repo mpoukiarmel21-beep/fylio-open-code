@@ -27,7 +27,7 @@ export default {
   files: { title: 'Files', subtitle: 'Access all your files.', search: 'Search a file…', images: 'Images', videos: 'Videos', docs: 'Documents', musicF: 'Music', downloads: 'Downloads', received: 'Received', items: '{{count}} items', select: 'Select' },
   gallery: { title: 'Gallery', search: 'Search a photo…', all: 'All', photos: 'Photos', videos: 'Videos', today: 'Today', week: 'This week' },
   music: { count: '{{count}} tracks', title: 'Music', search: 'Search a song…', recent: 'Recent music', all: 'All music', nowPlaying: 'Now playing', favorites: 'Favorites', lockDemo: 'Lock screen widget (preview)', lockHint: 'The widget only appears on the lock screen and control center (expo-audio + Now Playing).' },
-  video: { title: 'Video player', pip: 'Picture in picture', audioMode: 'Listening as audio in background', audioPlaying: 'Playing…', audioPaused: 'Paused' },
+  video: { title: 'Video player', pip: 'Picture in picture', audioMode: 'Listening as audio in background', audioPlaying: 'Playing…', audioPaused: 'Paused', download: 'Download', downloaded: 'Audio downloaded', downloadHint: 'Music widget shows when you lock the phone or leave the app.' },
   pdf: { title: 'PDF reader', page: 'Page {{n}} / {{total}}' },
   browser: { title: 'Browser', placeholder: 'Search or enter an address', tabs: 'Tabs', bookmarks: 'Bookmarks', downloads: 'Downloads', newTab: 'New tab' },
   notifs: { title: 'Notifications', empty: 'No notification', emptySub: 'Transfer requests and alerts will arrive here.', done: 'Transfer complete', failed: 'Transfer interrupted', request: 'Transfer request' },

@@ -259,6 +259,7 @@ export function VideoScreen() {
    *  lecteur audio global (widget écran verrouillé + lecture en arrière-plan, survit à la sortie). */
   const pl = usePlayer();
   const [audioMode, setAudioMode] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
   const [state, setState] = useState({ pos: 0, dur: item.duration ?? 0, playing: false, loading: true, err: false });
   const [muted, setMuted] = useState(false);
   const [trackW, setTrackW] = useState(1);
@@ -280,6 +281,16 @@ export function VideoScreen() {
     if (String(player.status) === 'readyToPlay') { try { player.play(); } catch { /* lecture reprise refusée */ } }
   };
   const toggleAudio = () => { if (audioMode) exitAudio(); else enterAudio(); };
+  /** « Télécharger » (mode audio) : garantit la lecture en arrière-plan via le lecteur global
+   *  → le widget musique (écran verrouillé / centre de contrôle) apparaît avec le son de la vidéo
+   *  même quand on éteint le téléphone ou qu'on sort de l'app. */
+  const onDownload = () => {
+    if (!pl.playing) {
+      try { if (String(player.status) === 'readyToPlay') player.pause(); } catch { /* déjà en pause */ }
+      pl.play({ id: 'video-' + encodeURIComponent(item.uri ?? ''), title: item.name, artist: t('video.audioMode'), duration: stateRef.current.dur || item.duration || 0, uri: item.uri, name: item.name });
+    }
+    setDownloaded(true);
+  };
   /** Avance dans la chaîne de candidats (fichier réel → variantes → vidéos de démo). Bornée par la longueur de la chaîne. */
   const tryNext = async () => {
     if (busyRef.current) return;
@@ -355,10 +366,17 @@ export function VideoScreen() {
           </View>
         )}
         {audioMode && (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,.45)' }} pointerEvents="none">
-            <Headphones size={34} color="#fff" />
-            <Text style={{ color: '#fff', fontFamily: F.bodyB, fontSize: 13 }}>{t('video.audioMode')}</Text>
-            <Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 12 }}>{pl.playing ? t('video.audioPlaying') : t('video.audioPaused')}</Text>
+          <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 100, paddingHorizontal: 30, backgroundColor: 'rgba(0,0,0,.45)' }}>
+            <View style={{ alignItems: 'center', gap: 8 }}>
+              <Headphones size={40} color="#fff" />
+              <Text style={{ color: '#fff', fontFamily: F.bodyB, fontSize: 14 }}>{t('video.audioMode')}</Text>
+              <Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 12 }}>{pl.playing ? t('video.audioPlaying') : t('video.audioPaused')}</Text>
+            </View>
+            <Pressable onPress={onDownload} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', paddingHorizontal: 22, paddingVertical: 13, borderRadius: 26, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 }}>
+              <Download size={18} color="#0A7BFF" />
+              <Text style={{ color: '#0B2C5F', fontFamily: F.bodyB, fontSize: 14 }}>{downloaded ? t('video.downloaded') : t('video.download')}</Text>
+            </Pressable>
+            {downloaded && <Text style={{ color: 'rgba(255,255,255,.75)', fontFamily: F.body, fontSize: 12, textAlign: 'center' }}>{t('video.downloadHint')}</Text>}
           </View>
         )}
       </View>

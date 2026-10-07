@@ -76,9 +76,9 @@ export function HomeScreen() {
             <Text style={T.lead()}>{t('home.ready')}</Text>
           </FadeIn>
         </Animated.View>
-        <FadeIn delay={120} style={{ flexDirection: 'row', gap: 12, paddingHorizontal: S.pad, marginTop: 8, alignItems: 'flex-end' }}>
-          <Image source={IMG.mascotMain} style={{ width: W * 0.36, height: W * 0.5, flexShrink: 0, marginBottom: 6 }} resizeMode="contain" />
-          <View style={{ flex: 1, gap: 10 }}>
+        <FadeIn delay={120} style={{ flexDirection: 'row', gap: 12, paddingHorizontal: S.pad, marginTop: 8, alignItems: 'flex-start' }}>
+          <Image source={IMG.mascotMain} style={{ width: W * 0.36, height: W * 0.5, flexShrink: 0, marginTop: 26 }} resizeMode="contain" />
+          <View style={{ flex: 1, gap: 10, marginTop: 2 }}>
             <View ref={r.send} collapsable={false}>
               <Press onPress={() => nav.navigate('SendSelect')} style={{ borderRadius: R.cardLg }}>
                 <View style={[st.cta, st.ctaBlue]}>

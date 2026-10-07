@@ -2,22 +2,22 @@
  * Barre du bas — spec maquette : une seule pill vitrée à 4 onglets
  * `Accueil | Fichiers | Musique | Galerie` (ordre maquette), capsule bleue 10 %
  * + indicateur 20x3 qui glisse sous l'onglet actif, + bouton câble rond 56x56
- * détaché de 12 px à droite avec un mini câble dessiné (2 connecteurs + arc).
+ * détaché de 12 px à droite (icône USB — même icône que le bloc astuces rapides).
  * Le câble passe au vert + halo pulsant quand un câble est détecté.
  */
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, Folder, Image as ImgIco, Music } from 'lucide-react-native';
+import { Home, Folder, Image as ImgIco, Music, Usb } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { C, F, R } from '../theme';
 import { Press } from './index';
 
 export const NAV_H = 72;
-/** Icônes TOUJOURS visibles : fond blanc 100 % opaque (aucun BlurView → rien ne peut rendre la
- *  barre invisible, même avec « Réduire la transparence » iOS) + icônes bleu nuit très foncées. */
+/** Icônes TOUJOURS visibles : fond blanc translucide façon Apple (BlurView clair, robuste à la
+ *  transparence réduite) + icônes bleu nuit très foncées, « recadrées » au centre du bloc. */
 const ICON_OFF = '#0B2C5F';
 const ICON_ON = '#0A7BFF';
 export type Tab = 'Home' | 'Files' | 'Music' | 'Gallery';
@@ -27,19 +27,6 @@ const TABS: { key: Tab; icon: any; label: string }[] = [
   { key: 'Music', icon: Music, label: 'common.music' },
   { key: 'Gallery', icon: ImgIco, label: 'common.gallery' },
 ];
-
-/** Mini câble dessiné (2 connecteurs + arc) — trait fin 1.8 px, pas une icône générique. */
-export function CableIco({ size = 26, color = C.ink, sw = 1.8 }: { size?: number; color?: string; sw?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Rect x="1.9" y="8.7" width="5.4" height="6.6" rx="1.7" stroke={color} strokeWidth={sw} />
-      <Path d="M4.1 10.6v2.8" stroke={color} strokeWidth={sw} strokeLinecap="round" />
-      <Rect x="16.7" y="8.7" width="5.4" height="6.6" rx="1.7" stroke={color} strokeWidth={sw} />
-      <Path d="M19.9 10.6v2.8" stroke={color} strokeWidth={sw} strokeLinecap="round" />
-      <Path d="M7.3 12c2.5 4.4 6.9 4.4 9.4 0" stroke={color} strokeWidth={sw} strokeLinecap="round" />
-    </Svg>
-  );
-}
 
 export function GlassNav({ active, onTab, cable, onCharger, chargerRef, tabRefs }: { active: Tab; onTab: (t: Tab) => void; cable: boolean; onCharger: () => void; chargerRef?: any; tabRefs?: Record<Tab, any> }) {
   const { t } = useTranslation();
@@ -61,7 +48,8 @@ export function GlassNav({ active, onTab, cable, onCharger, chargerRef, tabRefs 
   return (
     <View style={[st.wrap, { paddingBottom: Math.max(ins.bottom - 20, 4) }]} pointerEvents="box-none">
       <View style={st.nav} onLayout={(e) => setNavW(e.nativeEvent.layout.width)}>
-        <LinearGradient colors={['rgba(255,255,255,1)', 'rgba(238,246,255,1)']} style={StyleSheet.absoluteFill} />
+        <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(255,255,255,.62)', 'rgba(255,255,255,.34)']} style={StyleSheet.absoluteFill} />
         {slot > 0 && (
           <Animated.View style={[st.ind, { width: capW, transform: [{ translateX: Animated.add(Animated.multiply(ind, slot), new Animated.Value(5)) }] }]}>
             <LinearGradient colors={['rgba(10,124,255,.16)', 'rgba(46,144,250,.09)']} style={StyleSheet.absoluteFill} />
@@ -84,8 +72,9 @@ export function GlassNav({ active, onTab, cable, onCharger, chargerRef, tabRefs 
         <Press onPress={onCharger} style={st.charger}>
           {cable && <Animated.View style={[st.halo, { opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.75] }), transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.22] }) }] }]} />}
           <View style={[st.chargerIn, cable && { borderColor: 'rgba(29,186,107,.65)', backgroundColor: 'rgba(29,186,107,.14)' }]}>
-            <LinearGradient colors={['rgba(255,255,255,1)', 'rgba(238,246,255,1)']} style={StyleSheet.absoluteFill} />
-            <CableIco size={26} color={cable ? C.green : '#1F3A6E'} sw={1.9} />
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+            {!cable && <LinearGradient colors={['rgba(255,255,255,.62)', 'rgba(255,255,255,.34)']} style={StyleSheet.absoluteFill} />}
+            <Usb size={26} color={cable ? C.green : '#1F3A6E'} />
             {cable && <View style={st.dot} />}
           </View>
         </Press>
@@ -98,7 +87,7 @@ const st = StyleSheet.create({
   nav: { flex: 1, height: NAV_H, borderRadius: R.nav, overflow: 'hidden', flexDirection: 'row', borderWidth: 1, borderColor: 'rgba(11,42,107,.16)', shadowColor: '#166AB1', shadowOpacity: 0.2, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
   ind: { position: 'absolute', top: 6, bottom: 6, borderRadius: 26, overflow: 'hidden' },
   bar: { position: 'absolute', bottom: 5, alignSelf: 'center', width: 20, height: 3, borderRadius: 2, backgroundColor: C.accent },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 3, height: NAV_H, paddingHorizontal: 4, paddingBottom: 14 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 4 },
   charger: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
   chargerIn: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(11,42,107,.16)' },
   halo: { position: 'absolute', width: 70, height: 70, borderRadius: 35, backgroundColor: '#54ffbd' },
