@@ -6,8 +6,11 @@ import { Query, Asset, AssetField, MediaType, getPermissionsAsync, requestPermis
 import type { AssetMetadata } from 'expo-media-library';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { FileItem, Song, FileKind } from './mock';
 import { DEMO_SONGS } from './mock';
+
+const SAVED_KEY = 'fylio.savedAudios.v1';
 
 const IMG_MAX = 240;
 const VID_MAX = 120;
@@ -164,6 +167,7 @@ type Lib = {
   ask: () => Promise<boolean>;
   refresh: () => Promise<void>;
   importDocs: () => Promise<number>;
+  saveSong: (s: Song) => Promise<void>;
 };
 const Ctx = createContext<Lib | null>(null);
 export const useLibrary = () => {
@@ -183,6 +187,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   const [downloads, setDownloads] = useState<FileItem[]>([]);
   const [received, setReceived] = useState<FileItem[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
+  const [savedSongs, setSavedSongs] = useState<Song[]>([]);
   const permRef = useRef<Perm>('unknown');
   const loadedRef = useRef(false);
   const loadedPermRef = useRef<Perm>('unknown');
@@ -224,7 +229,19 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       setReceived(sbRcv);
       const seen = new Set<string>();
       const realSongs = realMusic.map(toSong).filter((s) => (seen.has(s.uri ?? s.id) ? false : (seen.add(s.uri ?? s.id), true)));
-      setSongs(realSongs.length ? realSongs : demoSongs());
+      let extra: Song[] = [];
+      try {
+        const raw = await AsyncStorage.getItem(SAVED_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) extra = parsed.slice(0, 200);
+        }
+      } catch {
+        /* stockage indisponible : on ignore les audios enregistrés */
+      }
+      setSavedSongs(extra);
+      const allSongs = [...extra.filter((s2) => !seen.has(s2.uri ?? s2.id)), ...realSongs];
+      setSongs(allSongs.length ? allSongs : demoSongs());
       loadedRef.current = true;
     } finally {
       busyRef.current = false;
@@ -281,6 +298,20 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const saveSong = useCallback(
+    async (s: Song) => {
+      const list = [s, ...savedSongs.filter((x) => x.id !== s.id)].slice(0, 200);
+      setSavedSongs(list);
+      setSongs([...list, ...songs.filter((x) => !list.some((l) => l.id === x.id))]);
+      const fi: FileItem = { id: 'aud-' + s.id, name: s.title, kind: 'music', size: Math.max(s.duration || 0, 0), date: Date.now(), duration: s.duration, uri: s.uri };
+      setMusic([fi, ...music.filter((m) => m.id !== fi.id)]);
+      try { await AsyncStorage.setItem(SAVED_KEY, JSON.stringify(list)); } catch {
+        /* stockage indisponible : l'audio reste affiché pour la session */
+      }
+    },
+    [savedSongs, songs, music]
+  );
+
   const itemsFor = useCallback(
     (kind: string) =>
       kind === 'images' ? images : kind === 'videos' ? videos : kind === 'music' ? music : kind === 'docs' ? docs : kind === 'downloads' ? downloads : kind === 'received' ? received : [],
@@ -304,6 +335,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     ask,
     refresh: load,
     importDocs,
+    saveSong,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

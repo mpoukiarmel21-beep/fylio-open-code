@@ -49,7 +49,12 @@
       "expo-font",
       "expo-localization",
       "expo-image",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "supportsBackgroundPlayback": true
+        }
+      ],
       [
         "expo-video",
         {

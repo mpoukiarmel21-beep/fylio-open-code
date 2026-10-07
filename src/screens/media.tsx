@@ -258,8 +258,9 @@ export function VideoScreen() {
   /** Piste « transformer la vidéo en audio » (façon PLAYit) : la même source est jouée par le
    *  lecteur audio global (widget écran verrouillé + lecture en arrière-plan, survit à la sortie). */
   const pl = usePlayer();
+  const lib = useLibrary();
   const [audioMode, setAudioMode] = useState(false);
-  const [downloaded, setDownloaded] = useState(false);
+  const [recorded, setRecorded] = useState(false);
   const [state, setState] = useState({ pos: 0, dur: item.duration ?? 0, playing: false, loading: true, err: false });
   const [muted, setMuted] = useState(false);
   const [trackW, setTrackW] = useState(1);
@@ -281,15 +282,18 @@ export function VideoScreen() {
     if (String(player.status) === 'readyToPlay') { try { player.play(); } catch { /* lecture reprise refusée */ } }
   };
   const toggleAudio = () => { if (audioMode) exitAudio(); else enterAudio(); };
-  /** « Télécharger » (mode audio) : garantit la lecture en arrière-plan via le lecteur global
-   *  → le widget musique (écran verrouillé / centre de contrôle) apparaît avec le son de la vidéo
-   *  même quand on éteint le téléphone ou qu'on sort de l'app. */
-  const onDownload = () => {
+  /** « Enregistrer » (mode audio) : lance la lecture en arrière-plan via le lecteur global (widget
+   *  musique au verrouillage / à la sortie de l'app) et enregistre la vidéo comme audio dans
+   *  l'onglet Musique (persisté) pour la retrouver plus tard. */
+  const onRecord = () => {
     if (!pl.playing) {
       try { if (String(player.status) === 'readyToPlay') player.pause(); } catch { /* déjà en pause */ }
       pl.play({ id: 'video-' + encodeURIComponent(item.uri ?? ''), title: item.name, artist: t('video.audioMode'), duration: stateRef.current.dur || item.duration || 0, uri: item.uri, name: item.name });
     }
-    setDownloaded(true);
+    if (!recorded) {
+      void lib.saveSong({ id: 'video-' + encodeURIComponent(item.uri ?? ''), title: item.name, artist: t('video.audioMode'), duration: stateRef.current.dur || item.duration || 0, uri: item.uri, name: item.name });
+      setRecorded(true);
+    }
   };
   /** Avance dans la chaîne de candidats (fichier réel → variantes → vidéos de démo). Bornée par la longueur de la chaîne. */
   const tryNext = async () => {
@@ -372,11 +376,13 @@ export function VideoScreen() {
               <Text style={{ color: '#fff', fontFamily: F.bodyB, fontSize: 14 }}>{t('video.audioMode')}</Text>
               <Text style={{ color: 'rgba(255,255,255,.7)', fontFamily: F.body, fontSize: 12 }}>{pl.playing ? t('video.audioPlaying') : t('video.audioPaused')}</Text>
             </View>
-            <Pressable onPress={onDownload} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', paddingHorizontal: 22, paddingVertical: 13, borderRadius: 26, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 }}>
-              <Download size={18} color="#0A7BFF" />
-              <Text style={{ color: '#0B2C5F', fontFamily: F.bodyB, fontSize: 14 }}>{downloaded ? t('video.downloaded') : t('video.download')}</Text>
-            </Pressable>
-            {downloaded && <Text style={{ color: 'rgba(255,255,255,.75)', fontFamily: F.body, fontSize: 12, textAlign: 'center' }}>{t('video.downloadHint')}</Text>}
+            <View style={{ alignItems: 'center', gap: 10 }}>
+              <Pressable onPress={onRecord} style={{ width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(10,123,255,.35)', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 }}>
+                <Download size={26} color={recorded ? '#29B473' : '#0A7BFF'} strokeWidth={2.4} />
+              </Pressable>
+              <Text style={{ color: '#fff', fontFamily: F.bodyB, fontSize: 13 }}>{recorded ? t('video.saved') : t('video.record')}</Text>
+            </View>
+            {recorded && <Text style={{ color: 'rgba(255,255,255,.75)', fontFamily: F.body, fontSize: 12, textAlign: 'center' }}>{t('video.saveHint')}</Text>}
           </View>
         )}
       </View>
